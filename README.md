@@ -6,7 +6,7 @@ Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitatio
 
 ## 🔧 Setup & Installation
 
-### 🔧 Prerequisites
+### Prerequisites
 
 Twilio Account with:
 - Account SID
@@ -23,7 +23,7 @@ You must install the following before running this project:
   ollama run gemma:3b
   ```
 
-### 🔧 Installation
+### Installation
 
 - Create a file named `docker-compose.override.yml` and add your specifiic environment variables
 
@@ -34,7 +34,7 @@ cd turtle-ai
 
 ---
 
-## Run the Application
+## 🏃‍♀️ Run the Application
 
 ```bash
 docker compose up --build
@@ -42,7 +42,8 @@ docker compose up --build
 
 - Once the app is running, go to: http://localhost:7860
 
-The app will now:
+
+✔️ The app will now:
 
 - Capture a frame from your RTSP camera every 10 minutes (or your custom interval)
 - Analyze the image using Gemma via Ollama
