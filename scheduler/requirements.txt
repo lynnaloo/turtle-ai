@@ -1,0 +1,7 @@
+requests
+flask
+python-dotenv
+langchain-ollama
+langchain-core
+twilio
+json-repair

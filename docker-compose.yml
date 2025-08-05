@@ -1,0 +1,40 @@
+
+services:
+  capture:
+    container_name: capture
+    build:
+      context: ./capture
+    image: camera-capture
+    ports: # don't use port 5000 as it conflicts with scheduler
+      - "5001:5000"  # Change host port if 5000 is busy
+    environment:
+      - CAMERA_URL=rtsp://
+      - CAMERA_URL2=rtsp://
+    volumes:
+      - /Users/username/Documents/dev/turtle-ai/images:/images
+      - /var/run/docker.sock:/var/run/docker.sock
+  scheduler:
+    container_name: scheduler
+    build:
+      context: ./scheduler
+    image: camera-scheduler
+    ports:
+      - "5050:5000"  # Change host port if 5000 is busy
+    environment:
+      - CAMERA_URL=rtsp://
+      - CAMERA_URL2=rtsp://
+      - INTERVAL=10
+      - HOST_IMAGE_DIR=/images
+      - OLLAMA_HOST=http://host.docker.internal:11434  # Use host.docker.internal to access host from container
+      - OLLAMA_PORT=11434  # Ollama API port
+      - OLLAMA_MODEL=gemma3:27b  # Specify the model to use
+      - TWILIO_ACCOUNT_SID=your_twilio_account_sid
+      - TWILIO_AUTH_TOKEN=your_twilio_auth_token
+      - TWILIO_PHONE_NUMBER=your_twilio_phone_number
+      - RECIPIENT_PHONE_NUMBER=recipient_phone_number
+    depends_on:
+      - capture
+    restart: no # No restart policy for scheduler
+    volumes:
+      - /Users/username/Documents/dev/turtle-ai/images:/images
+      - /var/run/docker.sock:/var/run/docker.sock
