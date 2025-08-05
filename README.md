@@ -18,9 +18,9 @@ You must install the following before running this project:
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2
 - [FFmpeg](https://ffmpeg.org/download.html)
 - [Ollama](https://ollama.com/) (must be running locally)
-- Gemma 3B or 3N model installed:
+- Gemma 3N model installed:
   ```bash
-  ollama run gemma:3b
+  ollama run gemma:3n:e4b
   ```
 
 ### Installation
@@ -54,3 +54,7 @@ docker compose up --build
 ## 📷 System Architecture
 
 <img width="756" height="424" alt="smart-monitoring" src="https://github.com/user-attachments/assets/faee898b-6529-4da9-8298-46bf6f5da0f0" />
+
+## 📰 Presentation
+
+This project was presented at the 23rd Annual Symposium on The Conservation and Biology of Tortoises and Freshwater Turtles. Link to presentation slides [here](https://github.com/lynnaloo/turtle-ai/blob/main/Linda-Nichols-TechnologyandHusbandry.pdf). 
