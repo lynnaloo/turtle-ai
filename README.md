@@ -1,20 +1,55 @@
-# Turtle AI
+# 🐢 Turtle AI — Smart Turtle Monitoring System
 
-### Smart animal monitoring system using RTSP and FFmpeg to capture and analyze camera feeds
+Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitation environments. It captures snapshots from live RTSP camera feeds and uses a local LLM (Gemma via Ollama) to detect signs of turtles in distress. When distress is detected, it sends alerts via Twilio and displays messages in the web interface.
 
-## Goal
+---
 
-To continuously capture video from cameras installed in a wildlife rehabilitation area to periodically analyze video clips to detect signs of animals in distress.
+## 🔧 Setup & Installation
 
-## Requirements
+### 🔧 Prerequisites
 
-* Local run capability - cost, reliability, sustainability
-* Runs Docker containers locally for Ollama (to run the open-source LLM), scheduler web service, and video capture web service
-* Notifications via SMS/WhatsAppp 
-* Address limitations with RTSP (Real-time Streaming Protocol) and FFmpeg (FF is fast-forward) 
-* Deciding on the right open-source model to run locally (currently using Gemma3)
-* Constant testing with model parameters and prompt engineering to get the right output for detections
+Twilio Account with:
+- Account SID
+- Auth Token
 
-## Reference Architecture
+You must install the following before running this project:
+
+- [Python 3.9+](https://www.python.org/downloads/)
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2
+- [FFmpeg](https://ffmpeg.org/download.html)
+- [Ollama](https://ollama.com/) (must be running locally)
+- Gemma 3B or 3N model installed:
+  ```bash
+  ollama run gemma:3b
+  ```
+
+### 🔧 Installation
+
+- Create a file named `docker-compose.override.yml` and add your specifiic environment variables
+
+```bash
+git clone https://github.com/lynnaloo/turtle-ai.git
+cd turtle-ai
+```
+
+---
+
+## Run the Application
+
+```bash
+docker compose up --build
+```
+
+- Once the app is running, go to: http://localhost:7860
+
+The app will now:
+
+- Capture a frame from your RTSP camera every 10 minutes (or your custom interval)
+- Analyze the image using Gemma via Ollama
+- Alert you if a turtle appears distressed (via WhatsApp)
+
+---
+
+## 📷 System Architecture
 
 <img width="756" height="424" alt="smart-monitoring" src="https://github.com/user-attachments/assets/faee898b-6529-4da9-8298-46bf6f5da0f0" />
