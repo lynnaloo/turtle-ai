@@ -13,10 +13,10 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
 # Now load environment variables
-CAMERA_URL = os.getenv('CAMERA_URL2')
+CAMERA_URL = os.getenv('CAMERA_URL1')
 
 if not CAMERA_URL:
-    raise EnvironmentError('CAMERA_URL2 environment variable not set')
+    raise EnvironmentError('CAMERA_URL environment variable not set')
 
 def image_capture(output_dir='/images'):
     # Make sure output directory exists

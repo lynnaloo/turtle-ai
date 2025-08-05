@@ -33,8 +33,8 @@ RECIPIENT_PHONE_NUMBER = os.getenv("RECIPIENT_PHONE_NUMBER")
 
 # Find your Account SID and Auth Token at twilio.com/console
 # and set the environment variables. See http://twil.io/secure
-account_sid = os.getenv('TWILIO_ACCOUNT_SID')
-auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
 
 # Create a text prompt to decribe the turtles in an image and to return 
 # if any of the turtles seem to be in distress
@@ -114,7 +114,7 @@ def send_twilio_notification(body):
         None
     """
 
-    client = Client(account_sid, auth_token)
+    client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
     message = client.messages.create(
         from_=TWILIO_PHONE_NUMBER,  # Twilio WhatsApp sandbox number
         body= body,
