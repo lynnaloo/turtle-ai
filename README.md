@@ -18,14 +18,14 @@ You must install the following before running this project:
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2
 - [FFmpeg](https://ffmpeg.org/download.html)
 - [Ollama](https://ollama.com/) (must be running locally)
-- Gemma 3N model installed:
+- Gemma 3n model installed:
   ```bash
   ollama run gemma:3n:e4b
   ```
 
 ### Installation
 
-- Create a file named `docker-compose.override.yml` and add your specifiic environment variables
+- Create a file named `docker-compose.override.yml` and add your specifiic environment variables (see docker-compose for format and examples)
 
 ```bash
 git clone https://github.com/lynnaloo/turtle-ai.git
@@ -39,9 +39,6 @@ cd turtle-ai
 ```bash
 docker compose up --build
 ```
-
-- Once the app is running, go to: http://localhost:7860
-
 
 ✔️ The app will now:
 
@@ -57,4 +54,6 @@ docker compose up --build
 
 ## 📰 Presentation
 
-This project was presented at the 23rd Annual Symposium on The Conservation and Biology of Tortoises and Freshwater Turtles. Link to presentation slides [here](https://github.com/lynnaloo/turtle-ai/blob/main/Linda-Nichols-TechnologyandHusbandry.pdf). 
+This project was presented at the 23rd Annual Symposium on The Conservation and Biology of Tortoises and Freshwater Turtles. Link to presentation slides [here](https://github.com/lynnaloo/turtle-ai/blob/main/Linda-Nichols-TechnologyandHusbandry.pdf).
+
+Here is a [YouTube teaser](https://www.youtube.com/watch?v=OuIkNih7N2I&ab_channel=ThePurringTurtle) and demo of the project!
