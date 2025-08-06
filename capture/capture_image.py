@@ -13,7 +13,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
 # Now load environment variables
-CAMERA_URL = os.getenv('CAMERA_URL1')
+CAMERA_URL = os.getenv('CAMERA_URL')
 
 if not CAMERA_URL:
     raise EnvironmentError('CAMERA_URL environment variable not set')

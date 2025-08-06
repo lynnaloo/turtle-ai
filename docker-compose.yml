@@ -27,7 +27,7 @@ services:
       - HOST_IMAGE_DIR=/images
       - OLLAMA_HOST=http://host.docker.internal:11434  # Use host.docker.internal to access host from container
       - OLLAMA_PORT=11434  # Ollama API port
-      - OLLAMA_MODEL=gemma3:27b  # Specify the model to use
+      - OLLAMA_MODEL=gemma3n:e4b  # Specify the model to use
       - TWILIO_ACCOUNT_SID=your_twilio_account_sid
       - TWILIO_AUTH_TOKEN=your_twilio_auth_token
       - TWILIO_PHONE_NUMBER=your_twilio_phone_number
