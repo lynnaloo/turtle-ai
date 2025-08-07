@@ -54,6 +54,4 @@ docker compose up --build
 
 ## 📰 Presentation
 
-This project was presented at the 23rd Annual Symposium on The Conservation and Biology of Tortoises and Freshwater Turtles. Link to presentation slides [here](https://github.com/lynnaloo/turtle-ai/blob/main/Linda-Nichols-TechnologyandHusbandry.pdf).
-
 Here is a [YouTube teaser](https://www.youtube.com/watch?v=OuIkNih7N2I&ab_channel=ThePurringTurtle) and demo of the project!
