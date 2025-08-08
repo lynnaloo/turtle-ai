@@ -1,6 +1,6 @@
 # 🐢 Turtle AI — Smart Turtle Monitoring System
 
-Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitation environments. It captures snapshots from live RTSP camera feeds and uses a local LLM (Gemma via Ollama) to detect signs of turtles in distress. When distress is detected, it sends alerts via Twilio and displays messages in the web interface.
+Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitation environments. It is locally-running application that captures snapshots from live RTSP camera feeds and uses an open-source LLM (Gemma 3n via Ollama) to detect signs of turtles in distress. When distress is detected, it sends alerts via Twilio and displays messages in the web interface.
 
 ---
 
