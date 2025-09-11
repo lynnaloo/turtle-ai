@@ -44,8 +44,8 @@ docker compose up --build
 
 ✔️ The app will now:
 
-- Capture a frame from your RTSP camera every 10 minutes (or your custom interval)
-- Analyze the image using Gemma via Ollama
+- Capture a frame from your RTSP-enabled camera every 10 minutes (or your custom interval)
+- Analyze the image using Gemma 3N via Ollama
 - Alert you if a turtle appears distressed (via WhatsApp)
 
 ---
