@@ -6,6 +6,8 @@ Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitatio
 
 ## 🔧 Setup & Installation
 
+This will work with any RTSP-enabled cameras, but we prefer [Ubiquity](https://ui.com/physical-security/special-devices/compact-cameras).
+
 ### Prerequisites
 
 Twilio Account with:
@@ -18,7 +20,7 @@ You must install the following before running this project:
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2
 - [FFmpeg](https://ffmpeg.org/download.html)
 - [Ollama](https://ollama.com/) (must be running locally)
-- Gemma 3n model installed:
+- [Gemma 3n](https://ai.google.dev/gemma/docs/gemma-3n) model installed:
   ```bash
   ollama run gemma:3n:e4b
   ```
@@ -54,4 +56,4 @@ docker compose up --build
 
 ## 📰 Presentation
 
-Here is a [YouTube teaser](https://www.youtube.com/watch?v=OuIkNih7N2I&ab_channel=ThePurringTurtle) and demo of the project!
+This is a video of my TSA symposium presentation on [YouTube](https://www.youtube.com/watch?v=VVEy0L_SDww&t=372s&ab_channel=ThePurringTurtle).
