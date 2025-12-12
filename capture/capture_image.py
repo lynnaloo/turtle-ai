@@ -11,12 +11,16 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
 # Now load environment variables
-CAMERA_URL = os.getenv('CAMERA_URL')
+DEFAULT_CAMERA_URL = os.getenv('CAMERA_URL1')
 
-if not CAMERA_URL:
-    raise EnvironmentError('CAMERA_URL environment variable not set')
+def image_capture(output_dir='/images', camera_url=None):
+    # Determine which camera URL to use
+    target_camera_url = camera_url if camera_url else DEFAULT_CAMERA_URL
 
-def image_capture(output_dir='/images'):
+    if not target_camera_url:
+        app.logger.error('No camera URL provided and CAMERA_URL1 env var not set')
+        return False
+
     # Make sure output directory exists
     if not output_dir or not os.path.exists(output_dir):
         app.logger.error('Output directory does not exist or is not set')
@@ -26,14 +30,14 @@ def image_capture(output_dir='/images'):
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     output_path = os.path.join(output_dir, f'tr_{timestamp}.jpg')
 
-    app.logger.debug(f'Capturing from: {CAMERA_URL}')
+    app.logger.debug(f'Capturing from: {target_camera_url}')
     app.logger.debug(f'Saving to: {output_path}')
 
     try:
         (
             ffmpeg
             .input(
-                CAMERA_URL, 
+                target_camera_url, 
                 rtsp_transport='tcp'
             )  
             .output(
@@ -52,10 +56,21 @@ def image_capture(output_dir='/images'):
         app.logger.error(e.stderr.decode())
         return False
 
-@app.route('/capture-now', methods=["GET"])
+@app.route('/capture-now', methods=["GET", "POST"])
 def capture_now():
-    output_dir = request.args.get('output_dir', '/images')
-    success = image_capture(output_dir)
+    output_dir = '/images'
+    camera_url = None
+
+    if request.method == 'POST':
+        data = request.get_json()
+        if data:
+            output_dir = data.get('output_dir', '/images')
+            camera_url = data.get('camera_url')
+    else:
+        output_dir = request.args.get('output_dir', '/images')
+        camera_url = request.args.get('camera_url')
+
+    success = image_capture(output_dir, camera_url)
     if success:
         return jsonify({"status": "success", "message": "Image saved to output directory"}), 200
     else:

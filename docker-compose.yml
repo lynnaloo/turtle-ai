@@ -8,8 +8,9 @@ services:
     ports: # don't use port 5000 as it conflicts with scheduler
       - "5001:5000"  # Change host port if 5000 is busy
     environment:
-      - CAMERA_URL=rtsp://
+      - CAMERA_URL1=rtsp://
       - CAMERA_URL2=rtsp://
+      - BUILDKIT_PROGRESS=plain docker compose up --build
     volumes:
       - /Users/username/Documents/dev/turtle-ai/images:/images
       - /var/run/docker.sock:/var/run/docker.sock
@@ -21,7 +22,7 @@ services:
     ports:
       - "5050:5000"  # Change host port if 5000 is busy
     environment:
-      - CAMERA_URL=rtsp://
+      - CAMERA_URL1=rtsp://
       - CAMERA_URL2=rtsp://
       - INTERVAL=10
       - HOST_IMAGE_DIR=/images
@@ -32,6 +33,7 @@ services:
       - TWILIO_AUTH_TOKEN=your_twilio_auth_token
       - TWILIO_PHONE_NUMBER=your_twilio_phone_number
       - RECIPIENT_PHONE_NUMBER=recipient_phone_number
+      - BUILDKIT_PROGRESS=plain docker compose up --build
     depends_on:
       - capture
     restart: no # No restart policy for scheduler

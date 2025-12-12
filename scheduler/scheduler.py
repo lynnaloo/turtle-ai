@@ -39,6 +39,19 @@ class Config:
     RECIPIENT_PHONE_NUMBER = os.getenv("RECIPIENT_PHONE_NUMBER")
 
     @classmethod
+    def get_camera_urls(cls):
+        urls = []
+        i = 1
+        while True:
+            url = os.getenv(f"CAMERA_URL{i}")
+            if url:
+                urls.append(url)
+                i += 1
+            else:
+                break
+        return urls
+
+    @classmethod
     def validate(cls):
         missing = []
         if not cls.HOST_IMAGE_DIR: missing.append("HOST_IMAGE_DIR")
@@ -91,15 +104,19 @@ def run_image_analysis(image_path: str) -> Dict[str, Any]:
         logger.error(f"Error during image analysis: {e}")
         return {}
 
-def run_capture() -> bool:
+def run_capture(camera_url: Optional[str] = None) -> bool:
     """
     Triggers the capture service to take a snapshot.
     """
-    logger.debug('Triggering camera capture...')
+    logger.debug(f'Triggering camera capture for {camera_url}...')
     target_url = f"{Config.CAPTURE_SERVICE_URL}/capture-now"
     
+    params = {"output_dir": Config.HOST_IMAGE_DIR}
+    if camera_url:
+        params["camera_url"] = camera_url
+
     try:
-        response = requests.get(target_url, params={"output_dir": Config.HOST_IMAGE_DIR}, timeout=10)
+        response = requests.post(target_url, json=params, timeout=10)
         response.raise_for_status()
         logger.info("Capture command sent successfully.")
         return True
@@ -147,37 +164,44 @@ def schedule_loop():
         try:
             logger.info('Starting scheduled check...')
             
-            # 1. Capture Image
-            if run_capture():
-                # Give it a moment to save (though the request should block until done, 
-                # file system latency might be a thing)
-                time.sleep(2) 
-                
-                # 2. Find latest image
-                if not os.path.exists(Config.HOST_IMAGE_DIR):
-                     logger.error(f"Image directory {Config.HOST_IMAGE_DIR} does not exist.")
-                     continue
+            camera_urls = Config.get_camera_urls()
+            if not camera_urls:
+                logger.warning("No camera URLs configured.")
 
-                image_files = [f for f in os.listdir(Config.HOST_IMAGE_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+            for i, cam_url in enumerate(camera_urls):
+                logger.info(f"Processing camera {i+1}...")
                 
-                if image_files:
-                    latest_image = max(
-                        [os.path.join(Config.HOST_IMAGE_DIR, f) for f in image_files],
-                        key=os.path.getctime
-                    )
+                # 1. Capture Image
+                if run_capture(cam_url):
+                    # Give it a moment to save (though the request should block until done, 
+                    # file system latency might be a thing)
+                    time.sleep(2) 
                     
-                    # 3. Analyze Image
-                    logger.info(f"Analyzing image: {latest_image}")
-                    analysis_result = run_image_analysis(latest_image)
-                    logger.info(f"Analysis result: {analysis_result}")
+                    # 2. Find latest image
+                    if not os.path.exists(Config.HOST_IMAGE_DIR):
+                         logger.error(f"Image directory {Config.HOST_IMAGE_DIR} does not exist.")
+                         continue
 
-                    # 4. Alert if needed
-                    if analysis_result.get("turtle_well_being") == "distressed":
-                        logger.warning("Turtle in distress detected!")
-                        alert_msg = format_alert_message(analysis_result)
-                        send_twilio_notification(alert_msg)
-                else:
-                    logger.warning("No images found in directory after capture.")
+                    image_files = [f for f in os.listdir(Config.HOST_IMAGE_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+                    
+                    if image_files:
+                        latest_image = max(
+                            [os.path.join(Config.HOST_IMAGE_DIR, f) for f in image_files],
+                            key=os.path.getctime
+                        )
+                        
+                        # 3. Analyze Image
+                        logger.info(f"Analyzing image: {latest_image}")
+                        analysis_result = run_image_analysis(latest_image)
+                        logger.info(f"Analysis result: {analysis_result}")
+
+                        # 4. Alert if needed
+                        if analysis_result.get("turtle_well_being") == "distressed":
+                            logger.warning("Turtle in distress detected!")
+                            alert_msg = format_alert_message(analysis_result)
+                            send_twilio_notification(alert_msg)
+                    else:
+                        logger.warning("No images found in directory after capture.")
             
         except Exception as e:
             logger.error(f"Unexpected error in scheduler loop: {e}", exc_info=True)
