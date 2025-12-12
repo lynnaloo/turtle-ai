@@ -9,7 +9,7 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-COPY scheduler.py ./
+COPY scheduler.py prompts.py ./
 
 RUN pip install -r requirements.txt
 

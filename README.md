@@ -117,6 +117,30 @@ docker compose logs -f
 
 ---
 
+## 🛠 Troubleshooting
+
+### Testing Camera Feed
+
+If you are unsure if your `CAMERA_URL` is correct, you can test it using `ffmpeg`.
+
+**Option 1: Using Docker (Recommended)**
+Run this command to attempt a capture from inside the container (replace the URL with your actual RTSP URL):
+
+```bash
+docker compose exec capture ffmpeg -rtsp_transport tcp -i "rtsp://192.168.1.x:554/stream" -vframes 1 -q:v 2 /images/test_manual.jpg
+```
+
+Check the `images/` folder for `test_manual.jpg`.
+
+**Option 2: Running Locally**
+If you have `ffmpeg` installed on your machine:
+
+```bash
+ffmpeg -rtsp_transport tcp -i "rtsp://192.168.1.x:554/stream" -vframes 1 -q:v 2 test_manual.jpg
+```
+
+---
+
 ## 📷 System Architecture
 
 <img width="756" height="424" alt="smart-monitoring" src="https://github.com/user-attachments/assets/faee898b-6529-4da9-8298-46bf6f5da0f0" />

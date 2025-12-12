@@ -12,6 +12,7 @@ from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 from langchain_ollama import OllamaLLM
 from json_repair import repair_json
+from prompts import TEXT_PROMPT
 
 # Configure logging
 logging.basicConfig(
@@ -51,25 +52,6 @@ class Config:
 Config.validate()
 
 # --- LLM Setup ---
-TEXT_PROMPT = """
-You are an expert in analyzing images of reptiles, specifically turtles.
-Your task is to analyze the given image of a turtle habitat and provide detailed information 
-about its characteristics and the well-being of the turtles. Identify indicators such as instances of 
-carapace-up positioning, entrapment, unusual inactivity, or aggressive interactions.
-
-Response Format: JSON
-
-Fill out the following JSON structure with your analysis:
-{
-    "turtle_well_being": "good" | "distressed",
-    "carapace_up": true | false,
-    "entrapment": true | false,
-    "unusual_inactivity": true | false,
-    "aggressive_interactions": true | false,
-    "eggs_present": true | false,
-    "additional_notes": "Any other observations or notes about the turtle."
-}
-"""
 
 try:
     llm = OllamaLLM(
