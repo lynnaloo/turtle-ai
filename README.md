@@ -34,14 +34,10 @@ Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitatio
 
 ### 1. Prepare the AI Model
 
-Ensure Ollama is running and pull the model you intend to use. We recommend `gemma2` or `gemma:3n` depending on your hardware capabilities.
+Ensure Ollama is running and pull the model you intend to use. We recommend `gemma4:e4b` as a good balance of performance and hardware requirements.
 
 ```bash
-# Example: Pulling Gemma 2 (9B)
-ollama pull gemma2
-
-# Or Gemma 3n if available/preferred
-ollama pull gemma:3n
+ollama pull gemma4:e4b
 ```
 
 ### 2. Clone the Repository
@@ -85,7 +81,7 @@ services:
       - TWILIO_AUTH_TOKEN=your_auth_token_here
       - TWILIO_PHONE_NUMBER=+15551234567
       - RECIPIENT_PHONE_NUMBER=+15559876543
-      - OLLAMA_MODEL=gemma2:latest  # Match the model you pulled
+      - OLLAMA_MODEL=gemma4:e4b    # Match the model you pulled
       - INTERVAL=10                 # Minutes between checks
 ```
 

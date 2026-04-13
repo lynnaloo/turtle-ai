@@ -29,7 +29,7 @@ class Config:
     INTERVAL = int(os.getenv("INTERVAL", 10))
     HOST_IMAGE_DIR = os.getenv("HOST_IMAGE_DIR", "/images")
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:27b")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
     CAPTURE_SERVICE_URL = os.getenv("CAPTURE_SERVICE_URL", "http://capture:5000")
     
     # Twilio
