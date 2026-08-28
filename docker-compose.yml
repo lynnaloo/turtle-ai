@@ -10,7 +10,6 @@ services:
     environment:
       - CAMERA_URL1=rtsp://
       - CAMERA_URL2=rtsp://
-      - BUILDKIT_PROGRESS=plain docker compose up --build
     volumes:
       - /Users/username/Documents/dev/turtle-ai/images:/images
       - /var/run/docker.sock:/var/run/docker.sock
@@ -26,6 +25,7 @@ services:
       - CAMERA_URL2=rtsp://
       - INTERVAL=10
       - HOST_IMAGE_DIR=/images
+      - CAPTURE_TIMEOUT=60          # Seconds to wait for a frame grab; raise for low-framerate cameras
       - OLLAMA_HOST=http://host.docker.internal:11434  # Use host.docker.internal to access host from container
       - OLLAMA_PORT=11434  # Ollama API port
       - OLLAMA_MODEL=gemma4:e4b  # Specify the model to use
@@ -36,7 +36,6 @@ services:
       - API_KEY=                        # Optional: set to secure the /scan endpoint
       - TURTLEVISION_WEBHOOK_URL=       # Optional: TurtleVision ingest URL to push results after each scan
       - TURTLEVISION_INGEST_KEY=        # Optional: shared secret matching TurtleVision's INGEST_KEY
-      - BUILDKIT_PROGRESS=plain docker compose up --build
     depends_on:
       - capture
     restart: no # No restart policy for scheduler

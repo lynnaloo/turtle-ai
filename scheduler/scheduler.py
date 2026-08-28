@@ -34,6 +34,9 @@ class Config:
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
     CAPTURE_SERVICE_URL = os.getenv("CAPTURE_SERVICE_URL", "http://capture:5000")
+    # Seconds to wait for a single frame grab. Low-framerate cameras need longer:
+    # ffmpeg must wait for a keyframe, so an 8fps stream can take ~4s vs ~1.5s at 30fps.
+    CAPTURE_TIMEOUT = int(os.getenv("CAPTURE_TIMEOUT", 60))
     
     # Twilio
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
@@ -114,9 +117,10 @@ def run_image_analysis(image_path: str) -> Dict[str, Any]:
         logger.error(f"Error during image analysis: {e}")
         return {}
 
-def run_capture(camera_url: Optional[str] = None) -> bool:
+def run_capture(camera_url: Optional[str] = None) -> Optional[str]:
     """
     Triggers the capture service to take a snapshot.
+    Returns the path of the image the capture service wrote, or None on failure.
     """
     logger.debug(f'Triggering camera capture for {camera_url}...')
     target_url = f"{Config.CAPTURE_SERVICE_URL}/capture-now"
@@ -126,13 +130,17 @@ def run_capture(camera_url: Optional[str] = None) -> bool:
         params["camera_url"] = camera_url
 
     try:
-        response = requests.post(target_url, json=params, timeout=10)
+        response = requests.post(target_url, json=params, timeout=Config.CAPTURE_TIMEOUT)
         response.raise_for_status()
-        logger.info("Capture command sent successfully.")
-        return True
+        image_path = (response.json() or {}).get("image_path")
+        logger.info(f"Capture command sent successfully. Image: {image_path}")
+        return image_path
     except requests.exceptions.RequestException as e:
         logger.error(f"Error calling capture service: {e}")
-        return False
+        return None
+    except ValueError:
+        logger.error("Capture service returned a non-JSON response.")
+        return None
 
 def send_twilio_notification(message_body: str) -> None:
     """
@@ -207,11 +215,12 @@ def schedule_loop():
                 logger.info(f"Processing camera {i+1}...")
 
                 # 1. Capture Image
-                if run_capture(cam_url):
+                captured_image = run_capture(cam_url)
+                if captured_image:
                     # Give it a moment to save
                     time.sleep(2)
 
-                    # 2. Find latest image
+                    # 2. Use the exact file the capture service reported
                     if not os.path.exists(Config.HOST_IMAGE_DIR):
                         logger.error(f"Image directory {Config.HOST_IMAGE_DIR} does not exist.")
                         camera_results.append({
@@ -221,13 +230,8 @@ def schedule_loop():
                         })
                         continue
 
-                    image_files = [f for f in os.listdir(Config.HOST_IMAGE_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-
-                    if image_files:
-                        latest_image = max(
-                            [os.path.join(Config.HOST_IMAGE_DIR, f) for f in image_files],
-                            key=os.path.getctime
-                        )
+                    if os.path.exists(captured_image):
+                        latest_image = captured_image
 
                         # 3. Analyze Image
                         logger.info(f"Analyzing image: {latest_image}")
@@ -250,11 +254,11 @@ def schedule_loop():
                             "error": None,
                         })
                     else:
-                        logger.warning("No images found in directory after capture.")
+                        logger.warning(f"Captured image {captured_image} not found on disk.")
                         camera_results.append({
                             "camera_index": i + 1, "camera_url": cam_url,
                             "image_path": None, "analysis": {}, "alert_sent": False,
-                            "error": "No images found after capture",
+                            "error": f"Captured image {captured_image} not found",
                         })
                 else:
                     camera_results.append({
@@ -328,29 +332,25 @@ def api_scan():
         }
 
         # 1. Capture
-        if not run_capture(cam_url):
+        latest_image = run_capture(cam_url)
+        if not latest_image:
             entry["error"] = "Capture failed"
             results.append(entry)
             continue
 
         time.sleep(2)  # allow file system to flush
 
-        # 2. Find latest image
+        # 2. Use the exact file the capture service reported
         if not os.path.exists(Config.HOST_IMAGE_DIR):
             entry["error"] = f"Image directory {Config.HOST_IMAGE_DIR} not found"
             results.append(entry)
             continue
 
-        image_files = [f for f in os.listdir(Config.HOST_IMAGE_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-        if not image_files:
-            entry["error"] = "No images found after capture"
+        if not os.path.exists(latest_image):
+            entry["error"] = f"Captured image {latest_image} not found"
             results.append(entry)
             continue
 
-        latest_image = max(
-            [os.path.join(Config.HOST_IMAGE_DIR, f) for f in image_files],
-            key=os.path.getctime
-        )
         entry["image_path"] = latest_image
 
         # 3. Analyze

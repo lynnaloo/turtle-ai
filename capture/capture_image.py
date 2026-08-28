@@ -14,20 +14,21 @@ ch.setLevel(logging.DEBUG)
 DEFAULT_CAMERA_URL = os.getenv('CAMERA_URL1')
 
 def image_capture(output_dir='/images', camera_url=None):
+    """Capture one frame. Returns the written file path, or None on failure."""
     # Determine which camera URL to use
     target_camera_url = camera_url if camera_url else DEFAULT_CAMERA_URL
 
     if not target_camera_url:
         app.logger.error('No camera URL provided and CAMERA_URL1 env var not set')
-        return False
+        return None
 
     # Make sure output directory exists
     if not output_dir or not os.path.exists(output_dir):
         app.logger.error('Output directory does not exist or is not set')
-        return
+        return None
 
     # Timestamped filename and output path
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
     output_path = os.path.join(output_dir, f'tr_{timestamp}.jpg')
 
     app.logger.debug(f'Capturing from: {target_camera_url}')
@@ -50,11 +51,11 @@ def image_capture(output_dir='/images', camera_url=None):
             .run(capture_stdout=True, capture_stderr=True)
         )
         app.logger.debug(f"Image saved to {output_path}")
-        return True
+        return output_path
     except ffmpeg.Error as e:
         app.logger.error("FFmpeg error occurred:")
         app.logger.error(e.stderr.decode())
-        return False
+        return None
 
 @app.route('/capture-now', methods=["GET", "POST"])
 def capture_now():
@@ -70,9 +71,13 @@ def capture_now():
         output_dir = request.args.get('output_dir', '/images')
         camera_url = request.args.get('camera_url')
 
-    success = image_capture(output_dir, camera_url)
-    if success:
-        return jsonify({"status": "success", "message": "Image saved to output directory"}), 200
+    image_path = image_capture(output_dir, camera_url)
+    if image_path:
+        return jsonify({
+            "status": "success",
+            "message": "Image saved to output directory",
+            "image_path": image_path,
+        }), 200
     else:
         return jsonify({"status": "error", "message": "Failed to capture image"}), 500
 

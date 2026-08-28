@@ -127,6 +127,15 @@ docker compose logs -f
 
 If you are unsure if your `CAMERA_URL` is correct, you can test it using `ffmpeg`.
 
+> **UniFi Protect users:** The URL shown in the UniFi console looks like
+> `rtsps://192.168.1.1:7441/kBCncnfNOsSzkrgM?enableSrtp`. Keep the `rtsps://` scheme — port
+> **7441 is TLS-only**, so `rtsp://...:7441/...` fails with
+> `Failed reading RTSP data: End of file`. The `?enableSrtp` suffix is optional and can be dropped:
+>
+> - `rtsps://192.168.1.1:7441/kBCncnfNOsSzkrgM` ✅
+> - `rtsp://192.168.1.1:7447/kBCncnfNOsSzkrgM` ✅ (plain RTSP lives on port 7447)
+> - `rtsp://192.168.1.1:7441/kBCncnfNOsSzkrgM` ❌ scheme/port mismatch
+
 **Option 1: Using Docker (Recommended)**
 Run this command to attempt a capture from inside the container (replace the URL with your actual RTSP URL):
 
