@@ -19,12 +19,28 @@ docker compose up --build
 
 Configuration lives in a git-ignored `docker-compose.override.yml` — see `docker-compose.yml` for the full list of env vars (camera URLs, Twilio credentials, Ollama model, interval).
 
+- Cameras are configured via numbered env vars: `CAMERA_URL1`, `CAMERA_URL2`, etc. (both services need them)
+- The shared volume path in `docker-compose.yml` is a placeholder (`/Users/username/...`) — override it with your actual local path in the override file
+
 ## Key Files
 
 - `scheduler/prompts.py` — LLM prompt for turtle analysis; edit to tune detection behavior
-- `scheduler/scheduler.py` — main orchestration loop
+- `scheduler/scheduler.py` — main orchestration loop; exposes Flask API on port 5050
 - `capture/capture_image.py` — RTSP capture service
+- `plan.md` — roadmap and planned features
 
 ## Distress Detection
 
 The LLM returns JSON. An alert fires when the response contains `"turtle_well_being": "distressed"`.
+
+## Scheduler API Endpoints
+
+- `POST /scan` — on-demand capture + analysis across all cameras; returns per-camera JSON results; fires Twilio alerts if distress detected. Requires `X-API-Key` header when `API_KEY` env var is set.
+- `GET /images/<filename>` — serve a captured image by filename from `HOST_IMAGE_DIR`; used by TurtleVision to display thumbnails. Requires `X-API-Key` header when `API_KEY` env var is set.
+- `GET /image-analysis?image_path=...` — analyze a specific image file
+- `GET /start-scheduler` — manually start the background scheduler loop (normally auto-starts on launch)
+- `GET /health` — health check
+
+## Roadmap
+
+See `plan.md` for planned features including the web dashboard, MCP server integration, and future Nemotron video streaming upgrade.

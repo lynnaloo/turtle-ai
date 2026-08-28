@@ -7,7 +7,9 @@ import json
 import logging
 from typing import Optional, Dict, Any
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, abort
+from flask_cors import CORS
+from functools import wraps
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 from langchain_ollama import OllamaLLM
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Flask app setup
 app = Flask(__name__)
+CORS(app)
 
 # --- Configuration ---
 class Config:
@@ -37,6 +40,13 @@ class Config:
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
     TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
     RECIPIENT_PHONE_NUMBER = os.getenv("RECIPIENT_PHONE_NUMBER")
+
+    # API auth — set API_KEY in your override to secure external-facing endpoints
+    API_KEY = os.getenv("API_KEY")
+
+    # TurtleVision push — set both to enable automatic result publishing
+    TURTLEVISION_WEBHOOK_URL = os.getenv("TURTLEVISION_WEBHOOK_URL")
+    TURTLEVISION_INGEST_KEY = os.getenv("TURTLEVISION_INGEST_KEY")
 
     @classmethod
     def get_camera_urls(cls):
@@ -154,6 +164,30 @@ def format_alert_message(analysis: Dict[str, Any]) -> str:
         f"Notes: {analysis.get('additional_notes', 'N/A')}"
     )
 
+def push_to_turtlevision(cameras: list) -> None:
+    """
+    Push scan results to TurtleVision's ingest endpoint.
+    Fires-and-forgets — a failure here never interrupts the scan loop.
+    """
+    if not Config.TURTLEVISION_WEBHOOK_URL or not Config.TURTLEVISION_INGEST_KEY:
+        return
+
+    payload = {
+        "scannedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "cameras": cameras,
+    }
+    try:
+        response = requests.post(
+            Config.TURTLEVISION_WEBHOOK_URL,
+            json=payload,
+            headers={"X-Ingest-Key": Config.TURTLEVISION_INGEST_KEY},
+            timeout=10,
+        )
+        response.raise_for_status()
+        logger.info(f"Pushed scan results to TurtleVision ({response.status_code}).")
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Failed to push results to TurtleVision: {e}")
+
 def schedule_loop():
     """
     Main loop for the scheduler.
@@ -163,46 +197,76 @@ def schedule_loop():
     while True:
         try:
             logger.info('Starting scheduled check...')
-            
+            camera_results = []
+
             camera_urls = Config.get_camera_urls()
             if not camera_urls:
                 logger.warning("No camera URLs configured.")
 
             for i, cam_url in enumerate(camera_urls):
                 logger.info(f"Processing camera {i+1}...")
-                
+
                 # 1. Capture Image
                 if run_capture(cam_url):
-                    # Give it a moment to save (though the request should block until done, 
-                    # file system latency might be a thing)
-                    time.sleep(2) 
-                    
+                    # Give it a moment to save
+                    time.sleep(2)
+
                     # 2. Find latest image
                     if not os.path.exists(Config.HOST_IMAGE_DIR):
-                         logger.error(f"Image directory {Config.HOST_IMAGE_DIR} does not exist.")
-                         continue
+                        logger.error(f"Image directory {Config.HOST_IMAGE_DIR} does not exist.")
+                        camera_results.append({
+                            "camera_index": i + 1, "camera_url": cam_url,
+                            "image_path": None, "analysis": {}, "alert_sent": False,
+                            "error": f"Image directory {Config.HOST_IMAGE_DIR} not found",
+                        })
+                        continue
 
                     image_files = [f for f in os.listdir(Config.HOST_IMAGE_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-                    
+
                     if image_files:
                         latest_image = max(
                             [os.path.join(Config.HOST_IMAGE_DIR, f) for f in image_files],
                             key=os.path.getctime
                         )
-                        
+
                         # 3. Analyze Image
                         logger.info(f"Analyzing image: {latest_image}")
                         analysis_result = run_image_analysis(latest_image)
                         logger.info(f"Analysis result: {analysis_result}")
 
                         # 4. Alert if needed
-                        if analysis_result.get("turtle_well_being") == "distressed":
+                        alert_sent = analysis_result.get("turtle_well_being") == "distressed"
+                        if alert_sent:
                             logger.warning("Turtle in distress detected!")
                             alert_msg = format_alert_message(analysis_result)
                             send_twilio_notification(alert_msg)
+
+                        camera_results.append({
+                            "camera_index": i + 1,
+                            "camera_url": cam_url,
+                            "image_path": latest_image,
+                            "analysis": analysis_result,
+                            "alert_sent": alert_sent,
+                            "error": None,
+                        })
                     else:
                         logger.warning("No images found in directory after capture.")
-            
+                        camera_results.append({
+                            "camera_index": i + 1, "camera_url": cam_url,
+                            "image_path": None, "analysis": {}, "alert_sent": False,
+                            "error": "No images found after capture",
+                        })
+                else:
+                    camera_results.append({
+                        "camera_index": i + 1, "camera_url": cam_url,
+                        "image_path": None, "analysis": {}, "alert_sent": False,
+                        "error": "Capture failed",
+                    })
+
+            # 5. Push all results to TurtleVision
+            if camera_results:
+                push_to_turtlevision(camera_results)
+
         except Exception as e:
             logger.error(f"Unexpected error in scheduler loop: {e}", exc_info=True)
         
@@ -210,7 +274,101 @@ def schedule_loop():
         logger.info(f'Sleeping for {Config.INTERVAL} minutes...')
         time.sleep(Config.INTERVAL * 60)
 
+# --- Auth ---
+
+def require_api_key(f):
+    """Decorator that enforces API key auth when API_KEY is configured."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if Config.API_KEY:
+            provided = request.headers.get("X-API-Key")
+            if provided != Config.API_KEY:
+                return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
 # --- Routes ---
+
+@app.route('/scan', methods=["POST"])
+@require_api_key
+def api_scan():
+    """
+    On-demand capture + analysis across all configured cameras.
+    Returns a list of per-camera results and fires Twilio alerts for any distress detected.
+
+    Response shape:
+    {
+        "cameras": [
+            {
+                "camera_index": 1,
+                "camera_url": "rtsp://...",
+                "image_path": "/images/...",
+                "analysis": { ...LLM JSON... },
+                "alert_sent": true | false,
+                "error": null | "message"
+            },
+            ...
+        ]
+    }
+    """
+    camera_urls = Config.get_camera_urls()
+    if not camera_urls:
+        return jsonify({"error": "No camera URLs configured"}), 503
+
+    results = []
+
+    for i, cam_url in enumerate(camera_urls):
+        entry = {
+            "camera_index": i + 1,
+            "camera_url": cam_url,
+            "image_path": None,
+            "analysis": {},
+            "alert_sent": False,
+            "error": None
+        }
+
+        # 1. Capture
+        if not run_capture(cam_url):
+            entry["error"] = "Capture failed"
+            results.append(entry)
+            continue
+
+        time.sleep(2)  # allow file system to flush
+
+        # 2. Find latest image
+        if not os.path.exists(Config.HOST_IMAGE_DIR):
+            entry["error"] = f"Image directory {Config.HOST_IMAGE_DIR} not found"
+            results.append(entry)
+            continue
+
+        image_files = [f for f in os.listdir(Config.HOST_IMAGE_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        if not image_files:
+            entry["error"] = "No images found after capture"
+            results.append(entry)
+            continue
+
+        latest_image = max(
+            [os.path.join(Config.HOST_IMAGE_DIR, f) for f in image_files],
+            key=os.path.getctime
+        )
+        entry["image_path"] = latest_image
+
+        # 3. Analyze
+        analysis = run_image_analysis(latest_image)
+        entry["analysis"] = analysis
+
+        # 4. Alert if distressed
+        if analysis.get("turtle_well_being") == "distressed":
+            alert_msg = format_alert_message(analysis)
+            send_twilio_notification(alert_msg)
+            entry["alert_sent"] = True
+
+        results.append(entry)
+
+    # Push results to TurtleVision (non-blocking)
+    push_to_turtlevision(results)
+
+    return jsonify({"cameras": results})
 
 @app.route('/image-analysis', methods=["GET"])
 def api_image_analysis():
@@ -231,6 +389,19 @@ def api_start_scheduler():
     thread = threading.Thread(target=schedule_loop, name="SchedulerThread", daemon=True)
     thread.start()
     return jsonify({"status": "started", "interval_minutes": Config.INTERVAL})
+
+@app.route('/images/<path:filename>', methods=["GET"])
+@require_api_key
+def serve_image(filename: str):
+    """
+    Serve a captured image by filename from HOST_IMAGE_DIR.
+    Used by TurtleVision to display thumbnails alongside scan results.
+    Example: GET /images/snapshot_cam1_20260504_120000.jpg
+    """
+    image_dir = Config.HOST_IMAGE_DIR
+    if not image_dir or not os.path.isdir(image_dir):
+        abort(404)
+    return send_from_directory(image_dir, filename)
 
 @app.route('/health', methods=["GET"])
 def health_check():

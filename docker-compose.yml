@@ -33,6 +33,9 @@ services:
       - TWILIO_AUTH_TOKEN=your_twilio_auth_token
       - TWILIO_PHONE_NUMBER=your_twilio_phone_number
       - RECIPIENT_PHONE_NUMBER=recipient_phone_number
+      - API_KEY=                        # Optional: set to secure the /scan endpoint
+      - TURTLEVISION_WEBHOOK_URL=       # Optional: TurtleVision ingest URL to push results after each scan
+      - TURTLEVISION_INGEST_KEY=        # Optional: shared secret matching TurtleVision's INGEST_KEY
       - BUILDKIT_PROGRESS=plain docker compose up --build
     depends_on:
       - capture

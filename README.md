@@ -1,6 +1,6 @@
 # 🐢 Turtle AI — Smart Turtle Monitoring System
 
-Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitation environments. It runs locally, capturing snapshots from live RTSP camera feeds and using an open-source LLM (Gemma 3 via Ollama) to detect signs of turtles in distress. When distress is detected, it sends alerts via Twilio (SMS/WhatsApp).
+Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitation environments. It runs locally, capturing snapshots from live RTSP camera feeds and using an open-source LLM (Gemma 4 via Ollama) to detect signs of turtles in distress. When distress is detected, it sends alerts via Twilio (SMS/WhatsApp).
 
 ---
 
@@ -73,19 +73,27 @@ Create a `docker-compose.override.yml` file in the root directory to set your pr
 services:
   capture:
     environment:
-      - CAMERA_URL=rtsp://username:password@192.168.1.x:554/stream
+      - CAMERA_URL1=rtsp://username:password@192.168.1.x:554/stream
+      - CAMERA_URL2=rtsp://username:password@192.168.1.y:554/stream  # add more as needed
+    volumes:
+      - /your/local/path/images:/images
 
   scheduler:
     environment:
+      - CAMERA_URL1=rtsp://username:password@192.168.1.x:554/stream
+      - CAMERA_URL2=rtsp://username:password@192.168.1.y:554/stream
       - TWILIO_ACCOUNT_SID=your_sid_here
       - TWILIO_AUTH_TOKEN=your_auth_token_here
       - TWILIO_PHONE_NUMBER=+15551234567
       - RECIPIENT_PHONE_NUMBER=+15559876543
       - OLLAMA_MODEL=gemma4:e4b    # Match the model you pulled
       - INTERVAL=10                 # Minutes between checks
+      - API_KEY=                    # Optional: set to secure the /scan endpoint
+    volumes:
+      - /your/local/path/images:/images
 ```
 
-> **Note:** If you are running Docker on Linux, you might need to adjust `OLLAMA_HOST` in `docker-compose.yml` to point to your host's IP address instead of `host.docker.internal`.
+> **Note:** The volume path in `docker-compose.yml` is a placeholder — override it here with your actual local path. On Linux, you may also need to change `OLLAMA_HOST` from `host.docker.internal` to your host's IP address.
 
 ---
 
@@ -105,11 +113,11 @@ docker compose logs -f
 
 ### What happens next?
 
-1. The **Scheduler** service waits for the configured `INTERVAL`.
-2. It triggers the **Capture** service to grab a frame from the RTSP stream.
-3. The image is saved to the shared `./images` directory.
-4. The **Scheduler** sends the image to your local Ollama instance for analysis.
-5. If the LLM detects "distress", a Twilio message is sent to your phone.
+1. The **Scheduler** starts immediately, triggers the **Capture** service to grab a frame from each RTSP stream, then sleeps for the configured `INTERVAL`.
+2. Each captured image is saved to the shared `./images` directory.
+3. The **Scheduler** sends each image to your local Ollama instance for analysis.
+4. If the LLM detects distress, a Twilio message is sent to your phone.
+5. You can also trigger an on-demand scan at any time via `POST http://localhost:5050/scan`.
 
 ---
 
