@@ -5,7 +5,10 @@ import requests
 import base64
 import json
 import logging
+import io
 from typing import Optional, Dict, Any
+
+from PIL import Image
 
 from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
@@ -172,24 +175,55 @@ def format_alert_message(analysis: Dict[str, Any]) -> str:
         f"Notes: {analysis.get('additional_notes', 'N/A')}"
     )
 
+MAX_IMAGE_WIDTH = 1280  # px — resize before pushing to keep payload small
+
+def _encode_image_for_push(image_path: str) -> Optional[str]:
+    """
+    Resize the image to at most MAX_IMAGE_WIDTH wide and return a base64-encoded JPEG string.
+    Returns None if the file can't be read.
+    """
+    try:
+        with Image.open(image_path) as img:
+            img = img.convert("RGB")
+            if img.width > MAX_IMAGE_WIDTH:
+                ratio = MAX_IMAGE_WIDTH / img.width
+                img = img.resize((MAX_IMAGE_WIDTH, int(img.height * ratio)), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=82)
+            return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception as e:
+        logger.warning(f"Could not encode image {image_path} for push: {e}")
+        return None
+
 def push_to_turtlevision(cameras: list) -> None:
     """
-    Push scan results to TurtleVision's ingest endpoint.
+    Push scan results (including resized images) to TurtleVision's ingest endpoint.
     Fires-and-forgets — a failure here never interrupts the scan loop.
     """
     if not Config.TURTLEVISION_WEBHOOK_URL or not Config.TURTLEVISION_INGEST_KEY:
         return
 
+    # Attach encoded images to each camera entry
+    cameras_with_images = []
+    for cam in cameras:
+        entry = dict(cam)
+        if cam.get("image_path") and not cam.get("error"):
+            encoded = _encode_image_for_push(cam["image_path"])
+            if encoded:
+                entry["image_data"] = encoded
+                entry["image_filename"] = os.path.basename(cam["image_path"])
+        cameras_with_images.append(entry)
+
     payload = {
         "scannedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "cameras": cameras,
+        "cameras": cameras_with_images,
     }
     try:
         response = requests.post(
             Config.TURTLEVISION_WEBHOOK_URL,
             json=payload,
             headers={"X-Ingest-Key": Config.TURTLEVISION_INGEST_KEY},
-            timeout=10,
+            timeout=30,
         )
         response.raise_for_status()
         logger.info(f"Pushed scan results to TurtleVision ({response.status_code}).")

@@ -6,3 +6,4 @@ langchain-ollama
 langchain-core
 twilio
 json-repair
+Pillow
