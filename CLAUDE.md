@@ -2,6 +2,16 @@
 
 AI-powered turtle rehabilitation monitor. Captures RTSP camera frames, analyzes them locally with Ollama, and sends Twilio SMS/WhatsApp alerts when turtle distress is detected.
 
+## Core Principles
+
+These goals are non-negotiable and must be preserved in all future development:
+
+- **Always local** — AI inference runs on the user's own hardware via Ollama. No images or data are ever sent to a cloud AI service or third-party datacenter for analysis.
+- **Push only, never pull** — turtle-ai pushes data outbound (scan results, images) to dashboards or other services. External services cannot tunnel into or call turtle-ai. There are no inbound API dependencies.
+- **Free to run** — no API tokens, no subscriptions, no per-inference cost. Users pay only for their own hardware and internet.
+- **Runs on modest hardware** — designed to work on a MacBook or similar consumer hardware using small efficient models (e.g. `gemma4:e4b`). Larger models on beefier hardware are supported but never required.
+- **Always open-source** — MIT licensed and free to use, modify, and self-host. Accessibility to small nonprofits is a design constraint, not an afterthought.
+
 ## Services
 
 Two Docker microservices sharing an `/images` volume:
