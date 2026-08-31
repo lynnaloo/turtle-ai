@@ -19,6 +19,7 @@ Make the scheduler externally callable so web frontends and other agents can tri
       "camera_url": "rtsp://...",
       "image_path": "/images/...",
       "analysis": {
+        "turtles_visible": 0,
         "turtle_well_being": "good" | "distressed",
         "carapace_up": true | false,
         "plastron_visible": true | false,
@@ -67,6 +68,8 @@ The ingest path and image display are done (above). Still open:
 - Visual treatment of distress indicators (flipped, entrapment, inactivity) rather than raw JSON
 - Surfacing the advisory `warnings` array — habitat issues that are worth a caregiver's attention
   but deliberately do not trigger a Twilio alert
+- Showing `turtles_visible`, so an empty bin reads as "nothing to monitor" rather than looking
+  identical to an occupied bin that is doing fine
 - History/trend view across scans, so gradual changes are visible
 
 ### MCP Server (Multi-Agent Use)

@@ -61,6 +61,12 @@ ffmpeg 5.0 — most RTSP examples online still show the old name, which errors o
 
 The LLM returns JSON. An alert fires when the response contains `"turtle_well_being": "distressed"`.
 
+`turtles_visible` is a grounding field: the model commits to a count of turtles it can actually see
+before it writes anything else, and `additional_notes` must not describe turtle behavior when the
+count is 0. Without it the prompt confabulated hatchlings in empty bins — dome hides and toy
+figurines read as turtles from an overhead camera. Keep that field first in the schema, and keep the
+"GROUND EVERY CLAIM" block in `prompts.py` when editing the prompt.
+
 Habitat problems (low water, dry substrate, etc.) are deliberately *not* distress. They go into the
 `warnings` array and leave the status `"good"`, so they never fire a Twilio alert — see
 `scheduler/prompts.py`. Alert texts include the camera number the distress was seen on.
