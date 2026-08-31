@@ -1,17 +1,20 @@
 import os
 import datetime
-import logging
 import ffmpeg
 from flask import Flask, jsonify, request
 
 # Flask app setup
 app = Flask(__name__)
-# Create a console handler
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
 
 # Now load environment variables
 DEFAULT_CAMERA_URL = os.getenv('CAMERA_URL1')
+
+# Seconds of RTSP socket inactivity before giving up on a capture.
+# Passed to ffmpeg as -timeout (microseconds); note this option was named
+# -stimeout before ffmpeg 5.0.
+# Keep this below the scheduler's CAPTURE_TIMEOUT so this service reports
+# failure before the scheduler's HTTP request times out.
+RTSP_TIMEOUT = 20
 
 def image_capture(output_dir='/images', camera_url=None):
     """Capture one frame. Returns the written file path, or None on failure."""
@@ -38,9 +41,10 @@ def image_capture(output_dir='/images', camera_url=None):
         (
             ffmpeg
             .input(
-                target_camera_url, 
-                rtsp_transport='tcp'
-            )  
+                target_camera_url,
+                rtsp_transport='tcp',
+                timeout=RTSP_TIMEOUT * 1_000_000
+            )
             .output(
                 output_path, 
                 vframes=1, 

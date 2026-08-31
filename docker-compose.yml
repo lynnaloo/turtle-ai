@@ -12,7 +12,6 @@ services:
       - CAMERA_URL2=rtsp://
     volumes:
       - /Users/username/Documents/dev/turtle-ai/images:/images
-      - /var/run/docker.sock:/var/run/docker.sock
   scheduler:
     container_name: scheduler
     build:
@@ -27,8 +26,8 @@ services:
       - HOST_IMAGE_DIR=/images
       - CAPTURE_TIMEOUT=60          # Seconds to wait for a frame grab; raise for low-framerate cameras
       - OLLAMA_HOST=http://host.docker.internal:11434  # Use host.docker.internal to access host from container
-      - OLLAMA_PORT=11434  # Ollama API port
       - OLLAMA_MODEL=gemma4:e4b  # Specify the model to use
+      - LLM_TIMEOUT=120  # Seconds to wait for one Ollama analysis before giving up
       - TWILIO_ACCOUNT_SID=your_twilio_account_sid
       - TWILIO_AUTH_TOKEN=your_twilio_auth_token
       - TWILIO_PHONE_NUMBER=your_twilio_phone_number
@@ -41,4 +40,3 @@ services:
     restart: no # No restart policy for scheduler
     volumes:
       - /Users/username/Documents/dev/turtle-ai/images:/images
-      - /var/run/docker.sock:/var/run/docker.sock

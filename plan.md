@@ -26,6 +26,7 @@ Make the scheduler externally callable so web frontends and other agents can tri
         "unusual_inactivity": true | false,
         "aggressive_interactions": true | false,
         "eggs_present": true | false,
+        "warnings": ["..."],
         "additional_notes": "..."
       },
       "alert_sent": true | false,
@@ -41,16 +42,32 @@ curl -X POST http://localhost:5050/scan \
   -H "X-API-Key: your_key_here"
 ```
 
+### TurtleVision Push
+After every scan — scheduled or on-demand — the scheduler pushes results outbound to the TurtleVision
+dashboard, preserving the push-only principle: nothing tunnels back in.
+
+**What was added:**
+- `push_to_turtlevision()` in `scheduler/scheduler.py`, called at the end of each scan
+- Sends `{scannedAt, cameras[]}` with each camera's analysis, plus the captured frame resized and
+  encoded inline so the dashboard can show thumbnails without reaching back into turtle-ai
+- Authenticated with an `X-Ingest-Key` header — set `TURTLEVISION_WEBHOOK_URL` and
+  `TURTLEVISION_INGEST_KEY` to enable; leave either unset and the push is skipped entirely
+- Fire-and-forget: a dashboard outage logs a warning and never interrupts the scan loop
+
+Alternatively the dashboard can pull on demand via `POST /scan` and fetch frames from
+`GET /images/<filename>`, both gated by `API_KEY`.
+
 ---
 
 ## Planned
 
-### External-Facing Web Dashboard
-A lightweight frontend that lets caregivers trigger a scan and view the latest analysis results from any browser.
+### Web Dashboard — Remaining Work
+The ingest path and image display are done (above). Still open:
 
-- Calls `POST /scan` and displays per-camera results
-- Shows distress indicators visually (flipped, entrapment, inactivity, etc.)
-- Could show the captured image alongside the analysis
+- Visual treatment of distress indicators (flipped, entrapment, inactivity) rather than raw JSON
+- Surfacing the advisory `warnings` array — habitat issues that are worth a caregiver's attention
+  but deliberately do not trigger a Twilio alert
+- History/trend view across scans, so gradual changes are visible
 
 ### MCP Server (Multi-Agent Use)
 Wrap the scheduler as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server so other AI agents can call `scan_cameras` as a native tool.

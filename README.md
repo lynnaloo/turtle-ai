@@ -88,7 +88,9 @@ services:
       - RECIPIENT_PHONE_NUMBER=+15559876543
       - OLLAMA_MODEL=gemma4:e4b    # Match the model you pulled
       - INTERVAL=10                 # Minutes between checks
-      - API_KEY=                    # Optional: set to secure the /scan endpoint
+      - CAPTURE_TIMEOUT=60          # Seconds to wait for a frame grab; raise for low-framerate cameras
+      - LLM_TIMEOUT=120             # Seconds to wait for one Ollama analysis
+      - API_KEY=                    # Optional: secures /scan, /image-analysis and /images
     volumes:
       - /your/local/path/images:/images
 ```
@@ -116,8 +118,13 @@ docker compose logs -f
 1. The **Scheduler** starts immediately, triggers the **Capture** service to grab a frame from each RTSP stream, then sleeps for the configured `INTERVAL`.
 2. Each captured image is saved to the shared `./images` directory.
 3. The **Scheduler** sends each image to your local Ollama instance for analysis.
-4. If the LLM detects distress, a Twilio message is sent to your phone.
+4. If the LLM detects distress, a Twilio message is sent to your phone, naming the camera it was seen on.
 5. You can also trigger an on-demand scan at any time via `POST http://localhost:5050/scan`.
+
+> **Sizing `INTERVAL`:** cameras are analyzed one at a time, and a single analysis typically takes
+> 30–40 seconds on modest hardware. Eight cameras is therefore a ~5 minute sweep. Keep `INTERVAL`
+> comfortably longer than one full sweep, or the next cycle starts while the previous one is still
+> running.
 
 ---
 
@@ -150,6 +157,25 @@ If you have `ffmpeg` installed on your machine:
 
 ```bash
 ffmpeg -rtsp_transport tcp -i "rtsp://192.168.1.x:554/stream" -vframes 1 -q:v 2 test_manual.jpg
+```
+
+### `Unrecognized option 'stimeout'`
+
+If every capture fails instantly with this in the `capture` logs:
+
+```
+Unrecognized option 'stimeout'.
+Error splitting the argument list: Option not found
+```
+
+…the RTSP socket timeout is being passed under its pre-ffmpeg-5.0 name. It was renamed to plain
+`-timeout` (still in microseconds), which is what `capture/capture_image.py` uses. Most RTSP guides
+online still show `-stimeout`, so it is an easy one to reintroduce by copy-paste. Check your image's
+version with `docker compose exec capture ffmpeg -version`, and confirm which options that build
+actually accepts with:
+
+```bash
+docker compose exec capture ffmpeg -hide_banner -h demuxer=rtsp | grep -i timeout
 ```
 
 ---

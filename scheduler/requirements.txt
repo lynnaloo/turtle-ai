@@ -1,7 +1,6 @@
 requests
 flask
 flask-cors
-python-dotenv
 langchain-ollama
 langchain-core
 twilio

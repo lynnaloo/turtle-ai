@@ -40,6 +40,8 @@ class Config:
     # Seconds to wait for a single frame grab. Low-framerate cameras need longer:
     # ffmpeg must wait for a keyframe, so an 8fps stream can take ~4s vs ~1.5s at 30fps.
     CAPTURE_TIMEOUT = int(os.getenv("CAPTURE_TIMEOUT", 60))
+    # Seconds to wait for one Ollama analysis before giving up
+    LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", 120))
     
     # Twilio
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
@@ -87,6 +89,7 @@ try:
         model=Config.OLLAMA_MODEL,
         base_url=Config.OLLAMA_HOST,
         num_ctx=10000,
+        sync_client_kwargs={"timeout": Config.LLM_TIMEOUT},
     )
 except Exception as e:
     logger.error(f"Failed to initialize Ollama LLM: {e}")
@@ -166,9 +169,10 @@ def send_twilio_notification(message_body: str) -> None:
     except Exception as e:
         logger.error(f"Failed to send notification: {e}")
 
-def format_alert_message(analysis: Dict[str, Any]) -> str:
+def format_alert_message(analysis: Dict[str, Any], camera_index: Optional[int] = None) -> str:
+    camera_label = f" on camera {camera_index}" if camera_index else ""
     return (
-        f"🐢 Turtle Alert detected at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"🐢 Turtle Alert detected{camera_label} at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         f"Status: {analysis.get('turtle_well_being', 'unknown')}\n"
         f"Carapace Up: {analysis.get('carapace_up', False)}\n"
         f"Entrapment: {analysis.get('entrapment', False)}\n"
@@ -275,8 +279,8 @@ def schedule_loop():
                         # 4. Alert if needed
                         alert_sent = analysis_result.get("turtle_well_being") == "distressed"
                         if alert_sent:
-                            logger.warning("Turtle in distress detected!")
-                            alert_msg = format_alert_message(analysis_result)
+                            logger.warning(f"Turtle in distress detected! (camera {i+1})")
+                            alert_msg = format_alert_message(analysis_result, camera_index=i + 1)
                             send_twilio_notification(alert_msg)
 
                         camera_results.append({
@@ -393,7 +397,7 @@ def api_scan():
 
         # 4. Alert if distressed
         if analysis.get("turtle_well_being") == "distressed":
-            alert_msg = format_alert_message(analysis)
+            alert_msg = format_alert_message(analysis, camera_index=i + 1)
             send_twilio_notification(alert_msg)
             entry["alert_sent"] = True
 
@@ -405,6 +409,7 @@ def api_scan():
     return jsonify({"cameras": results})
 
 @app.route('/image-analysis', methods=["GET"])
+@require_api_key
 def api_image_analysis():
     image_path = request.args.get("image_path")
     if not image_path:
