@@ -2,6 +2,8 @@
 
 Turtle AI is an AI-powered wildlife monitoring system designed for rehabilitation environments. It runs locally, capturing snapshots from live RTSP camera feeds and using an open-source LLM (Gemma 4 via Ollama) to detect signs of turtles in distress. When distress is detected, it sends alerts via Twilio (SMS/WhatsApp).
 
+A project of [Southeastern Reptile Conservation (SERC)](https://www.southeastreptile.org) — a 501(c)(3) nonprofit in Hampton Roads, Virginia.
+
 ---
 
 ## ✨ Features
@@ -177,6 +179,26 @@ actually accepts with:
 ```bash
 docker compose exec capture ffmpeg -hide_banner -h demuxer=rtsp | grep -i timeout
 ```
+
+---
+
+## 📊 TurtleVision Dashboard (Optional)
+
+turtle-ai can push scan results and captured images to [TurtleVision](https://turtlevision.org), a web dashboard built by SERC that shows the live state of your enclosures and keeps a scan history. This is entirely optional — turtle-ai runs fine without it, sending only Twilio alerts.
+
+To enable the push, set these three variables in your `docker-compose.override.yml`:
+
+```yaml
+  scheduler:
+    environment:
+      - TURTLEVISION_ENABLED=true
+      - TURTLEVISION_WEBHOOK_URL=https://turtlevision.org/api/ingest
+      - TURTLEVISION_INGEST_KEY=your_ingest_key_here
+```
+
+To disable it, set `TURTLEVISION_ENABLED=false` (or simply leave `TURTLEVISION_WEBHOOK_URL` blank — no push will happen either way).
+
+> **Privacy note:** Some rehabilitators work with endangered or sensitive species and should not expose animal locations or images to any external service. If that applies to you, leave `TURTLEVISION_ENABLED=false`. All analysis stays on-device; only Twilio alerts leave your network.
 
 ---
 

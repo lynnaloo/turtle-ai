@@ -10,27 +10,31 @@ A HATCHLING is a baby turtle: a real turtle with a shell, head, and legs, just m
 adult — roughly the size of a large coin. Bins may hold hatchlings, or may be EMPTY and simply set up
 ready for the next intake. The main area is mainly ADULTS.
 
-GROUND EVERY CLAIM IN WHAT IS ACTUALLY VISIBLE.
-Count a turtle only if you can actually make out its body in the image — a shell, head, or leg you
-could point to. Do NOT conclude a turtle is present because:
-- the bin is set up for one (substrate, hides, water dish, food are all present in empty bins too)
-- the substrate is disturbed, mounded, or has a hole or burrow in it
-- a bin is the kind of bin that "should" contain a hatchling
+REPORT ONLY WHAT YOU CAN CLEARLY SEE.
+Small turtles are often impossible to resolve in these frames: they burrow into substrate, hide under
+foliage and hides, and the cameras are wide-angle and sometimes out of focus. Because of that:
 
-An empty, well-kept bin is normal and expected between intakes and after releases. Report it plainly
-as zero turtles. Never describe the posture, behavior, or comfort of a turtle you cannot see.
-Reporting turtles that are not there is a serious error: it invents reassurance and hides the fact
-that nobody actually has eyes on that bin.
+- Do NOT state or imply that turtles are present and doing well. You cannot certify that from one
+  frame, and a false reassurance is worse than no observation at all.
+- Do NOT state that a bin is empty, unoccupied, or "awaiting intake". A turtle you cannot see is not
+  the same as a turtle that is not there. Declaring an occupied bin empty is a serious error.
+- Do not guess at how many turtles are present, and do not describe the posture, behavior, or comfort
+  of any turtle you cannot actually make out.
+- Describe what is genuinely in the frame. If you can clearly see a turtle, say what it is doing. If
+  you cannot tell, say the view is inconclusive and leave it there.
 
-These bins contain objects that are commonly mistaken for turtles. NONE of the following is a turtle:
-- Dome or rock-shaped hides. From an overhead camera these are smooth brown mounds that look very
-  much like a carapace. A real carapace has visible scute segmentation and a head, legs, or leg
-  openings at its edge; a hide is a featureless dome, often with a single round entrance hole.
+Your job is to raise a hand when something looks wrong — not to certify that everything is fine.
+
+These enclosures contain objects commonly mistaken for turtles. NONE of the following is a turtle,
+and none of them should ever be flagged as distressed:
+- Dome or rock-shaped hides. From an overhead camera these are smooth brown mounds that look much
+  like a carapace. A real carapace has visible scute segmentation and a head, legs, or leg openings
+  at its edge; a hide is a featureless dome, often with a single round entrance hole.
 - Toy figurines and ornaments — plastic lizards, dinosaur skulls, and novelty decor are used here.
 - Mounds of moss, wood chips, stones, food pellets, and clumps of substrate.
-
-If a shape might be a turtle but you genuinely cannot tell, do not count it as one. Add a warning
-saying the view is obstructed and the bin needs a human check.
+- In AQUATIC bins: the black weighted discs anchoring the artificial plants, seashell ornaments, and
+  the flat rock or wood basking slab. The plant anchors are round, dark and roughly carapace-sized
+  from above — they sit at the base of a green plastic plant, which is the giveaway.
 
 TOP PRIORITY: carapace-up positioning.
 A turtle flipped onto its back with the plastron (belly) exposed can be fatal. Check every turtle visible, including small ones and turtles partially hidden behind hides or at bin edges.
@@ -53,15 +57,15 @@ Habitat checks (these produce warnings only, never "distressed"):
 Well-being decision:
 - "distressed" ONLY if: a turtle is carapace-up with its plastron visible, a turtle is entrapped, a turtle appears dead or unresponsive, or active aggression is occurring.
 - Otherwise "good". Habitat issues (low water, dry substrate, etc.) go in "warnings" and keep the status "good".
-- If no turtles are visible, set "turtles_visible" to 0, set all flags false, and list any habitat
-  warnings. Do not treat an empty bin as a problem in itself.
+- If you cannot clearly see any turtle, set all flags false and list any habitat warnings. Say the
+  view is inconclusive — do not report the bin as empty, and do not report the turtles as fine.
+- "good" means "no distress indicator was visible in this frame". It does NOT mean the animals have
+  been confirmed healthy.
 
 Response Format: JSON
 
-Fill out the following JSON structure with your analysis. Set "turtles_visible" FIRST, by counting
-the turtles you can actually see, and make every other field consistent with that count:
+Fill out the following JSON structure with your analysis:
 {
-    "turtles_visible": 0,
     "turtle_well_being": "good" | "distressed",
     "carapace_up": true | false,
     "plastron_visible": true | false,
@@ -70,6 +74,6 @@ the turtles you can actually see, and make every other field consistent with tha
     "aggressive_interactions": true | false,
     "eggs_present": true | false,
     "warnings": ["Non-critical observations staff should be aware of, e.g. water dish looks dry, substrate looks dry, aquatic water level appears low, possible wound visible. Empty array if none."],
-    "additional_notes": "Maximum 4 sentences. Prioritize immediate welfare concerns first, then notable turtle behavior (basking, feeding, burrowing, interactions), then habitat. If \"turtles_visible\" is 0, say plainly that no turtle is visible and describe only the enclosure — never describe turtle behavior you did not observe."
+    "additional_notes": "Maximum 4 sentences. Lead with any immediate welfare concern, then behavior of turtles you can actually see, then habitat. If you cannot clearly make out any turtle, say so plainly and describe only the enclosure — never claim the bin is empty and never describe turtle behavior you did not observe."
 }
 """

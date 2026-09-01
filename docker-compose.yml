@@ -28,13 +28,22 @@ services:
       - OLLAMA_HOST=http://host.docker.internal:11434  # Use host.docker.internal to access host from container
       - OLLAMA_MODEL=gemma4:e4b  # Specify the model to use
       - LLM_TIMEOUT=120  # Seconds to wait for one Ollama analysis before giving up
+      - LLM_TEMPERATURE=0  # 0 = deterministic; Ollama's default of 0.8 makes repeat scans disagree
+      - TZ=America/New_York       # ACTIVE_HOURS is read in this zone; without it the container runs UTC
+      - ACTIVE_HOURS=06:00-22:00  # Optional: only run scheduled scans in this local window.
+                                  # Overnight windows (22:00-06:00) work. On-demand POST /scan always runs.
+      # Optional per-camera analysis crop, "left,top,right,bottom" in pixels. Wide/fisheye cameras
+      # need this: the model downscales internally and loses small turtles in a full-room shot.
+      # - CAMERA_CROP1=1000,1350,2500,2200
       - TWILIO_ACCOUNT_SID=your_twilio_account_sid
       - TWILIO_AUTH_TOKEN=your_twilio_auth_token
       - TWILIO_PHONE_NUMBER=your_twilio_phone_number
       - RECIPIENT_PHONE_NUMBER=recipient_phone_number
       - API_KEY=                        # Optional: set to secure the /scan endpoint
-      - TURTLEVISION_WEBHOOK_URL=       # Optional: TurtleVision ingest URL to push results after each scan
-      - TURTLEVISION_INGEST_KEY=        # Optional: shared secret matching TurtleVision's INGEST_KEY
+      - TURTLEVISION_ENABLED=true       # Set to false to disable the TurtleVision dashboard push entirely
+      - TURTLEVISION_WEBHOOK_URL=       # Required when enabled: TurtleVision ingest URL
+      - TURTLEVISION_INGEST_KEY=        # Required when enabled: shared secret matching TurtleVision's INGEST_KEY
+      - IMAGE_RETENTION_HOURS=24        # Hours to keep captured images on disk before deleting. Set to 0 to disable cleanup.
     depends_on:
       - capture
     restart: no # No restart policy for scheduler
