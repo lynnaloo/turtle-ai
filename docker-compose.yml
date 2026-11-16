@@ -25,9 +25,11 @@ services:
       - INTERVAL=10
       - HOST_IMAGE_DIR=/images
       - CAPTURE_TIMEOUT=60          # Seconds to wait for a frame grab; raise for low-framerate cameras
-      - OLLAMA_HOST=http://host.docker.internal:11434  # Use host.docker.internal to access host from container
-      - OLLAMA_MODEL=gemma4:e4b  # Specify the model to use
-      - LLM_TIMEOUT=120  # Seconds to wait for one Ollama analysis before giving up
+      # Any OpenAI-compatible server with vision support (Ollama, LM Studio, vLLM, llama.cpp, ...)
+      - LLM_BASE_URL=http://host.docker.internal:11434/v1  # Ollama's OpenAI endpoint; host.docker.internal reaches the host from the container
+      - LLM_MODEL=gemma4:e4b  # Model name as the server knows it
+      - LLM_API_KEY=not-needed  # Local servers ignore this
+      - LLM_TIMEOUT=120  # Seconds to wait for one analysis before giving up
       - LLM_TEMPERATURE=0  # 0 = deterministic; Ollama's default of 0.8 makes repeat scans disagree
       - TZ=America/New_York       # ACTIVE_HOURS is read in this zone; without it the container runs UTC
       - ACTIVE_HOURS=06:00-22:00  # Optional: only run scheduled scans in this local window.

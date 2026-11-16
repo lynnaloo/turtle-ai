@@ -1,8 +1,7 @@
 requests
 flask
 flask-cors
-langchain-ollama
-langchain-core
+openai
 twilio
 json-repair
 Pillow

@@ -12,7 +12,7 @@ The operator's `docker-compose.override.yml` and `scheduler/prompts.py` are the 
 
 These goals are non-negotiable and must be preserved in all future development:
 
-- **Always local** — AI inference runs on the user's own hardware via Ollama. No images or data are ever sent to a cloud AI service or third-party datacenter for analysis.
+- **Always local** — AI inference runs on the user's own hardware (Ollama by default, or any local OpenAI-compatible server). No images or data are ever sent to a cloud AI service or third-party datacenter for analysis. The code speaks the generic OpenAI API spec, but docs, defaults, and examples must only point at local servers.
 - **Push only, never pull** — turtle-ai pushes data outbound (scan results, images) to dashboards or other services. External services cannot tunnel into or call turtle-ai. There are no inbound API dependencies.
 - **Free to run** — no API tokens, no subscriptions, no per-inference cost. Users pay only for their own hardware and internet.
 - **Runs on modest hardware** — designed to work on a MacBook or similar consumer hardware using small efficient models (e.g. `gemma4:e4b`). Larger models on beefier hardware are supported but never required.
@@ -25,7 +25,7 @@ Two Docker microservices sharing an `/images` volume:
 - **capture** (port 5001) — grabs frames from RTSP streams via FFmpeg
 - **scheduler** (port 5050) — runs on a timer, triggers captures, runs LLM analysis, sends alerts
 
-Ollama runs on the **host machine**, not in Docker.
+The model server (Ollama by default) runs on the **host machine**, not in Docker. The scheduler talks to it via the OpenAI chat-completions API (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`), so any compatible server with vision support works. Ollama's `/v1` endpoint can't set `num_ctx` per request; raise it server-side with `OLLAMA_CONTEXT_LENGTH`.
 
 Neither service needs the Docker socket — they talk to each other over the Compose network, so do
 not mount `/var/run/docker.sock` or install `docker.io` into the images.
@@ -51,7 +51,7 @@ and 0. The room-overview camera returned 7 on one frame and 0 on the next.
 Two causes, addressed differently:
 - **Sampling.** Ollama defaults to `temperature=0.8`, which is a creative-writing setting for what is
   a classification task. `LLM_TEMPERATURE` now defaults to `0`. This buys consistency, not accuracy.
-- **Resolution.** Images go to Ollama at full size (`scheduler.py`, no resize before `llm.bind`), and
+- **Resolution.** Images go to Ollama at full size (`scheduler.py`, no resize before the chat-completions call), and
   the vision encoder downscales internally. In a wide fisheye room shot an adult turtle ends up a
   handful of pixels. Close-up bin cameras fare much better than the room overview.
 
@@ -68,7 +68,7 @@ layer gives up before the inner one can report a useful failure:
 |---|---|---|---|
 | `RTSP_TIMEOUT` | 20s | constant in `capture/capture_image.py` | ffmpeg socket inactivity on one RTSP grab |
 | `CAPTURE_TIMEOUT` | 60s | env var | scheduler's HTTP call to the capture service |
-| `LLM_TIMEOUT` | 120s | env var | one Ollama analysis call |
+| `LLM_TIMEOUT` | 120s | env var | one model analysis call |
 
 `LLM_TEMPERATURE` (env var, default `0`) is separate from the timeouts — see Model Limitations.
 

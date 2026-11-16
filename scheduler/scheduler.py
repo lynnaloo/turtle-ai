@@ -15,7 +15,7 @@ from flask_cors import CORS
 from functools import wraps
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
-from langchain_ollama import OllamaLLM
+from openai import OpenAI
 from json_repair import repair_json
 from prompts import TEXT_PROMPT
 
@@ -34,13 +34,17 @@ CORS(app)
 class Config:
     INTERVAL = int(os.getenv("INTERVAL", 10))
     HOST_IMAGE_DIR = os.getenv("HOST_IMAGE_DIR", "/images")
-    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
+    # Any server that speaks the OpenAI chat-completions API with vision input works:
+    # Ollama (/v1), LM Studio, vLLM, llama.cpp server, LocalAI, etc.
+    LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:11434/v1")
+    LLM_MODEL = os.getenv("LLM_MODEL", "gemma4:e4b")
+    # Local servers ignore the key but the client requires a non-empty one.
+    LLM_API_KEY = os.getenv("LLM_API_KEY", "not-needed")
     CAPTURE_SERVICE_URL = os.getenv("CAPTURE_SERVICE_URL", "http://capture:5000")
     # Seconds to wait for a single frame grab. Low-framerate cameras need longer:
     # ffmpeg must wait for a keyframe, so an 8fps stream can take ~4s vs ~1.5s at 30fps.
     CAPTURE_TIMEOUT = int(os.getenv("CAPTURE_TIMEOUT", 60))
-    # Seconds to wait for one Ollama analysis before giving up
+    # Seconds to wait for one model analysis before giving up
     LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", 120))
     # Scheduled scans only run inside this local-time window, e.g. "06:00-22:00".
     # Unset means scan around the clock. Overnight windows ("22:00-06:00") are supported.
@@ -48,7 +52,7 @@ class Config:
     ACTIVE_HOURS = os.getenv("ACTIVE_HOURS", "").strip()
 
     # Sampling temperature. This is a structured classification task, not creative writing:
-    # Ollama's default of 0.8 makes repeat analyses of the SAME frame disagree wildly.
+    # Ollama's default of 0.8 (used when no temperature is sent) makes repeat analyses of the SAME frame disagree wildly.
     LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", 0))
     
     # Twilio
@@ -124,15 +128,14 @@ Config.validate()
 # --- LLM Setup ---
 
 try:
-    llm = OllamaLLM(
-        model=Config.OLLAMA_MODEL,
-        base_url=Config.OLLAMA_HOST,
-        num_ctx=10000,
-        temperature=Config.LLM_TEMPERATURE,
-        sync_client_kwargs={"timeout": Config.LLM_TIMEOUT},
+    llm = OpenAI(
+        base_url=Config.LLM_BASE_URL,
+        api_key=Config.LLM_API_KEY,
+        timeout=Config.LLM_TIMEOUT,
+        max_retries=0,
     )
 except Exception as e:
-    logger.error(f"Failed to initialize Ollama LLM: {e}")
+    logger.error(f"Failed to initialize LLM client: {e}")
     llm = None
 
 # --- Services ---
@@ -179,9 +182,19 @@ def run_image_analysis(image_path: str, crop=None) -> Dict[str, Any]:
     try:
         image_data = _encode_image_for_analysis(image_path, crop)
 
-        llm_with_image = llm.bind(images=[image_data])
-        response = llm_with_image.invoke(TEXT_PROMPT)
-        
+        completion = llm.chat.completions.create(
+            model=Config.LLM_MODEL,
+            temperature=Config.LLM_TEMPERATURE,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": TEXT_PROMPT},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}},
+                ],
+            }],
+        )
+        response = completion.choices[0].message.content or ""
+
         # Parse JSON
         repaired_json = repair_json(response)
         return json.loads(repaired_json)

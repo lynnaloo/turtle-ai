@@ -42,6 +42,14 @@ Ensure Ollama is running and pull the model you intend to use. We recommend `gem
 ollama pull gemma4:e4b
 ```
 
+#### Using a different model server
+
+turtle-ai talks to the model through the standard **OpenAI chat-completions API** (with image input), so it isn't tied to Ollama. Point `LLM_BASE_URL` at any compatible server that runs a vision model — LM Studio, vLLM, llama.cpp's server, LocalAI, and so on — and set `LLM_MODEL` to the name that server uses. `LLM_API_KEY` is only needed if your server requires one.
+
+> **Ollama context size:** Ollama's OpenAI endpoint can't set the context window per request, and its default may be too small for the prompt plus an image. If analyses come back empty or truncated, start Ollama with a larger window, e.g. `OLLAMA_CONTEXT_LENGTH=10000 ollama serve`.
+
+> **Upgrading:** `OLLAMA_HOST` and `OLLAMA_MODEL` are replaced by `LLM_BASE_URL` (note the `/v1` suffix) and `LLM_MODEL`.
+
 ### 2. Clone the Repository
 
 ```bash
@@ -88,10 +96,11 @@ services:
       - TWILIO_AUTH_TOKEN=your_auth_token_here
       - TWILIO_PHONE_NUMBER=+15551234567
       - RECIPIENT_PHONE_NUMBER=+15559876543
-      - OLLAMA_MODEL=gemma4:e4b    # Match the model you pulled
+      - LLM_BASE_URL=http://host.docker.internal:11434/v1  # Any OpenAI-compatible endpoint
+      - LLM_MODEL=gemma4:e4b       # Match the model your server has loaded
       - INTERVAL=10                 # Minutes between checks
       - CAPTURE_TIMEOUT=60          # Seconds to wait for a frame grab; raise for low-framerate cameras
-      - LLM_TIMEOUT=120             # Seconds to wait for one Ollama analysis
+      - LLM_TIMEOUT=120             # Seconds to wait for one analysis
       - API_KEY=                    # Optional: secures /scan, /image-analysis and /images
     volumes:
       - /your/local/path/images:/images
@@ -119,7 +128,7 @@ docker compose logs -f
 
 1. The **Scheduler** starts immediately, triggers the **Capture** service to grab a frame from each RTSP stream, then sleeps for the configured `INTERVAL`.
 2. Each captured image is saved to the shared `./images` directory.
-3. The **Scheduler** sends each image to your local Ollama instance for analysis.
+3. The **Scheduler** sends each image to your local model server (Ollama by default) for analysis.
 4. If the LLM detects distress, a Twilio message is sent to your phone, naming the camera it was seen on.
 5. You can also trigger an on-demand scan at any time via `POST http://localhost:5050/scan`.
 
