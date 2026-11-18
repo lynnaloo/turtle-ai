@@ -231,7 +231,7 @@ To disable it, set `TURTLEVISION_ENABLED=false` (or simply leave `TURTLEVISION_W
 
 ## 📷 System Architecture
 
-<img width="756" height="424" alt="smart-monitoring" src="https://github.com/user-attachments/assets/faee898b-6529-4da9-8298-46bf6f5da0f0" />
+![Turtle AI architecture: cameras feed the capture service, the scheduler sends frames to the local model, and distress triggers a Twilio alert](docs/architecture.png)
 
 ## 🤝 Contributing
 
