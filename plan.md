@@ -2,12 +2,11 @@
 
 ## In Progress
 
-### On-Demand Scan API
-Make the scheduler externally callable so web frontends and other agents can trigger a capture + analysis cycle and receive structured results.
+### Manual Scan API
+A local endpoint so the operator (or a script on the same network) can trigger a capture + analysis cycle on demand and receive structured results.
 
 **What was added:**
 - `POST /scan` endpoint on the scheduler service (port 5050) — triggers capture across all configured cameras, runs LLM analysis on each, fires Twilio alerts for any distress detected, and returns a JSON response
-- CORS enabled globally so browser-based frontends can call the API directly
 - Optional API key auth via `X-API-Key` request header — set `API_KEY` in `docker-compose.override.yml` to enable
 
 **Response shape:**
@@ -42,9 +41,10 @@ curl -X POST http://localhost:5050/scan \
   -H "X-API-Key: your_key_here"
 ```
 
-### TurtleVision Push
-After every scan — scheduled or on-demand — the scheduler pushes results outbound to the TurtleVision
-dashboard, preserving the push-only principle: nothing tunnels back in.
+### TurtleVision Push (optional)
+Some partners want a visual portal. After every scan — scheduled or manual — the scheduler can push
+results outbound to the TurtleVision dashboard. The push is optional (`TURTLEVISION_ENABLED`), and
+turtle-ai only ever sends data out: nothing connects back in.
 
 **What was added:**
 - `push_to_turtlevision()` in `scheduler/scheduler.py`, called at the end of each scan
@@ -53,9 +53,6 @@ dashboard, preserving the push-only principle: nothing tunnels back in.
 - Authenticated with an `X-Ingest-Key` header — set `TURTLEVISION_WEBHOOK_URL` and
   `TURTLEVISION_INGEST_KEY` to enable; leave either unset and the push is skipped entirely
 - Fire-and-forget: a dashboard outage logs a warning and never interrupts the scan loop
-
-Alternatively the dashboard can pull on demand via `POST /scan` and fetch frames from
-`GET /images/<filename>`, both gated by `API_KEY`.
 
 ---
 

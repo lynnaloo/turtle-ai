@@ -27,6 +27,8 @@ Two Docker microservices sharing an `/images` volume:
 
 The model server (Ollama by default) runs on the **host machine**, not in Docker. The scheduler talks to it via the OpenAI chat-completions API (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`), so any compatible server with vision support works. Ollama's `/v1` endpoint can't set `num_ctx` per request; raise it server-side with `OLLAMA_CONTEXT_LENGTH`.
 
+On Linux hosts (e.g. a vLLM server), the scheduler needs `extra_hosts: ["host.docker.internal:host-gateway"]` in the override, and `LLM_MODEL` must match vLLM's `--served-model-name`. For server installs, bind ports to `127.0.0.1` and set `restart: unless-stopped`. See the README's "Linux hosts and vLLM" section.
+
 Neither service needs the Docker socket — they talk to each other over the Compose network, so do
 not mount `/var/run/docker.sock` or install `docker.io` into the images.
 
@@ -100,7 +102,7 @@ Habitat problems (low water, dry substrate, etc.) are deliberately *not* distres
 ## Scheduler API Endpoints
 
 - `POST /scan` — on-demand capture + analysis across all cameras; returns per-camera JSON results; fires Twilio alerts if distress detected. Requires `X-API-Key` header when `API_KEY` env var is set.
-- `GET /images/<filename>` — serve a captured image by filename from `HOST_IMAGE_DIR`; used by TurtleVision to display thumbnails. Requires `X-API-Key` header when `API_KEY` env var is set.
+- `GET /images/<filename>` — serve a captured image by filename from `HOST_IMAGE_DIR`, for local use by the operator. Requires `X-API-Key` header when `API_KEY` env var is set.
 - `GET /image-analysis?image_path=...` — analyze a specific image file. Requires `X-API-Key` header when `API_KEY` env var is set.
 - `GET /start-scheduler` — manually start the background scheduler loop (normally auto-starts on launch)
 - `GET /health` — health check

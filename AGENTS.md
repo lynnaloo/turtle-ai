@@ -100,7 +100,7 @@ Habitat problems (low water, dry substrate, etc.) are deliberately *not* distres
 ## Scheduler API Endpoints
 
 - `POST /scan` — on-demand capture + analysis across all cameras; returns per-camera JSON results; fires Twilio alerts if distress detected. Requires `X-API-Key` header when `API_KEY` env var is set.
-- `GET /images/<filename>` — serve a captured image by filename from `HOST_IMAGE_DIR`; used by TurtleVision to display thumbnails. Requires `X-API-Key` header when `API_KEY` env var is set.
+- `GET /images/<filename>` — serve a captured image by filename from `HOST_IMAGE_DIR`, for local use by the operator. Requires `X-API-Key` header when `API_KEY` env var is set.
 - `GET /image-analysis?image_path=...` — analyze a specific image file. Requires `X-API-Key` header when `API_KEY` env var is set.
 - `GET /start-scheduler` — manually start the background scheduler loop (normally auto-starts on launch)
 - `GET /health` — health check

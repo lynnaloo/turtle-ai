@@ -15,6 +15,7 @@ A project of [Southeastern Reptile Conservation (SERC)](https://www.southeastrep
   - Unusual inactivity
   - Aggressive interactions
 - **Instant Alerts**: Sends notifications via Twilio when distress is detected.
+- **Optional Visual Portal**: Partners who want a dashboard can enable an outbound push to [TurtleVision](#-turtlevision-dashboard-optional). Nothing is sent unless you configure it, so fully on-premises setups are unaffected.
 - **Privacy First**: All processing happens locally on your machine; images are not sent to the cloud for analysis.
 
 ---
@@ -45,6 +46,23 @@ ollama pull gemma4:e4b
 #### Using a different model server
 
 turtle-ai talks to the model through the standard **OpenAI chat-completions API** (with image input), so it isn't tied to Ollama. Point `LLM_BASE_URL` at any compatible server that runs a vision model — LM Studio, vLLM, llama.cpp's server, LocalAI, and so on — and set `LLM_MODEL` to the name that server uses. `LLM_API_KEY` is only needed if your server requires one.
+
+#### Linux hosts and vLLM
+
+On Linux, Docker doesn't define `host.docker.internal` for you. Add it to the `scheduler` service in your override so the container can reach a model server running on the host:
+
+```yaml
+  scheduler:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - LLM_BASE_URL=http://host.docker.internal:8000/v1   # your vLLM port
+      - LLM_MODEL=your-served-model-name                    # vLLM's --served-model-name
+```
+
+[vLLM](https://docs.vllm.ai/) works as-is: start it with a vision-capable model and a `--served-model-name` (for example `vllm serve <your-vision-model> --served-model-name my-vision-model`), then set `LLM_MODEL` to that served name. If the server runs on a different machine, use its address in `LLM_BASE_URL` instead.
+
+For a long-running server install, also set `restart: unless-stopped` on both services, and bind the ports to localhost (`ports: !override` with `"127.0.0.1:5050:5000"`) since turtle-ai only pushes data out and never needs inbound access.
 
 > **Ollama context size:** Ollama's OpenAI endpoint can't set the context window per request, and its default may be too small for the prompt plus an image. If analyses come back empty or truncated, start Ollama with a larger window, e.g. `OLLAMA_CONTEXT_LENGTH=10000 ollama serve`.
 
@@ -106,7 +124,7 @@ services:
       - /your/local/path/images:/images
 ```
 
-> **Note:** The volume path in `docker-compose.yml` is a placeholder — override it here with your actual local path. On Linux, you may also need to change `OLLAMA_HOST` from `host.docker.internal` to your host's IP address.
+> **Note:** The volume path in `docker-compose.yml` is a placeholder — override it here with your actual local path. On Linux, see [Linux hosts and vLLM](#linux-hosts-and-vllm) for reaching a model server on the host.
 
 ---
 
@@ -130,7 +148,7 @@ docker compose logs -f
 2. Each captured image is saved to the shared `./images` directory.
 3. The **Scheduler** sends each image to your local model server (Ollama by default) for analysis.
 4. If the LLM detects distress, a Twilio message is sent to your phone, naming the camera it was seen on.
-5. You can also trigger an on-demand scan at any time via `POST http://localhost:5050/scan`.
+5. You can also trigger a manual scan at any time from the machine running turtle-ai via `POST http://localhost:5050/scan`.
 
 > **Sizing `INTERVAL`:** cameras are analyzed one at a time, and a single analysis typically takes
 > 30–40 seconds on modest hardware. Eight cameras is therefore a ~5 minute sweep. Keep `INTERVAL`
@@ -193,7 +211,7 @@ docker compose exec capture ffmpeg -hide_banner -h demuxer=rtsp | grep -i timeou
 
 ## 📊 TurtleVision Dashboard (Optional)
 
-turtle-ai can push scan results and captured images to [TurtleVision](https://turtlevision.org), a web dashboard built by SERC that shows the live state of your enclosures and keeps a scan history. This is entirely optional — turtle-ai runs fine without it, sending only Twilio alerts.
+turtle-ai can push scan results and captured images to [TurtleVision](https://turtlevision.org), a web dashboard built by SERC that shows the live state of your enclosures and keeps a scan history. This is entirely optional and intended for partners who want a visual portal — turtle-ai runs fine without it, sending only Twilio alerts.
 
 To enable the push, set these three variables in your `docker-compose.override.yml`:
 
@@ -214,6 +232,10 @@ To disable it, set `TURTLEVISION_ENABLED=false` (or simply leave `TURTLEVISION_W
 ## 📷 System Architecture
 
 <img width="756" height="424" alt="smart-monitoring" src="https://github.com/user-attachments/assets/faee898b-6529-4da9-8298-46bf6f5da0f0" />
+
+## 🤝 Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📰 Presentation
 
