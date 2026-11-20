@@ -10,11 +10,12 @@ A project of [Southeastern Reptile Conservation (SERC)](https://www.southeastrep
 
 - **Automated Monitoring**: Captures frames from RTSP-enabled cameras at configurable intervals.
 - **AI Analysis**: Uses local LLMs (via Ollama) to analyze images for specific distress indicators:
-  - Carapace-up positioning (flipped over)
+  - Flipped over (plastron visible)
   - Entrapment
   - Unusual inactivity
   - Aggressive interactions
 - **Instant Alerts**: Sends notifications via Twilio when distress is detected.
+- **Local Dashboard**: A built-in staff dashboard at `http://localhost:5050/dashboard` shows every camera's latest frame, status, and recent scan history. It runs entirely on your machine with no external requests. See [Local Dashboard](#%EF%B8%8F-local-dashboard).
 - **Optional Visual Portal**: Partners who want a dashboard can enable an outbound push to [TurtleVision](#-turtlevision-dashboard-optional). Nothing is sent unless you configure it, so fully on-premises setups are unaffected.
 - **Privacy First**: All processing happens locally on your machine; images are not sent to the cloud for analysis.
 
@@ -209,6 +210,20 @@ docker compose exec capture ffmpeg -hide_banner -h demuxer=rtsp | grep -i timeou
 
 ---
 
+## 🖥️ Local Dashboard
+
+turtle-ai includes a built-in staff dashboard, served by the scheduler itself. Open **http://localhost:5050/dashboard** while it's running to see:
+
+- a status pill for every camera (ok, distressed, inactivity, offline, failed)
+- the latest scan, with each camera's image, flagged indicators, warnings, and notes
+- the last several scans, expandable for review
+
+It refreshes automatically, works with any number of cameras, and loads nothing from the internet: no external fonts, scripts, or services. Scan history (without camera URLs) is saved next to your captured images so it survives a restart. Images stay on your machine and are removed after `IMAGE_RETENTION_HOURS`, so older history entries may show "Image no longer on disk".
+
+If you set `API_KEY`, the dashboard asks for it once per browser session. To keep the dashboard reachable only from the machine running turtle-ai, bind the port to localhost (`"127.0.0.1:5050:5000"`).
+
+---
+
 ## 📊 TurtleVision Dashboard (Optional)
 
 turtle-ai can push scan results and captured images to [TurtleVision](https://turtlevision.org), a web dashboard built by SERC that shows the live state of your enclosures and keeps a scan history. This is entirely optional and intended for partners who want a visual portal — turtle-ai runs fine without it, sending only Twilio alerts.
@@ -223,7 +238,7 @@ To enable the push, set these three variables in your `docker-compose.override.y
       - TURTLEVISION_INGEST_KEY=your_ingest_key_here
 ```
 
-To disable it, set `TURTLEVISION_ENABLED=false` (or simply leave `TURTLEVISION_WEBHOOK_URL` blank — no push will happen either way).
+To disable it, set `TURTLEVISION_ENABLED=false` (or simply leave `TURTLEVISION_WEBHOOK_URL` blank — no push will happen either way). The built-in local dashboard works either way.
 
 > **Privacy note:** Some rehabilitators work with endangered or sensitive species and should not expose animal locations or images to any external service. If that applies to you, leave `TURTLEVISION_ENABLED=false`. All analysis stays on-device; only Twilio alerts leave your network.
 

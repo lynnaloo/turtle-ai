@@ -6,6 +6,7 @@ import base64
 import json
 import logging
 import io
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 from PIL import Image
@@ -253,7 +254,7 @@ def format_alert_message(analysis: Dict[str, Any], camera_index: Optional[int] =
     return (
         f"🐢 Turtle Alert detected{camera_label} at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         f"Status: {analysis.get('turtle_well_being', 'unknown')}\n"
-        f"Carapace Up: {analysis.get('carapace_up', False)}\n"
+        f"Flipped: {analysis.get('flipped', False)}\n"
         f"Entrapment: {analysis.get('entrapment', False)}\n"
         f"Notes: {analysis.get('additional_notes', 'N/A')}"
     )
@@ -312,6 +313,77 @@ def push_to_turtlevision(cameras: list) -> None:
         logger.info(f"Pushed scan results to TurtleVision ({response.status_code}).")
     except requests.exceptions.RequestException as e:
         logger.warning(f"Failed to push results to TurtleVision: {e}")
+
+# --- Local dashboard history ---
+# Recent scans are kept in memory and saved to HOST_IMAGE_DIR so the local dashboard
+# survives a restart. Nothing here leaves the machine. Camera URLs (which can contain
+# stream tokens) are never stored.
+HISTORY_LIMIT = 20
+_history: list = []  # newest first
+_history_lock = threading.Lock()
+
+def _history_path() -> str:
+    return os.path.join(Config.HOST_IMAGE_DIR, "scan_history.json")
+
+def _load_history() -> None:
+    try:
+        with open(_history_path()) as f:
+            loaded = json.load(f)
+        if isinstance(loaded, list):
+            with _history_lock:
+                _history[:] = loaded[:HISTORY_LIMIT]
+            logger.info(f"Loaded {len(_history)} scan(s) of dashboard history.")
+    except FileNotFoundError:
+        pass
+    except (OSError, ValueError) as e:
+        logger.warning(f"Could not load dashboard history: {e}")
+
+def record_scan(cameras: list) -> None:
+    """Remember one completed scan for the local dashboard. Never raises."""
+    try:
+        entry = {
+            "scannedAt": datetime.now(timezone.utc).isoformat(),
+            "cameras": [
+                {
+                    "camera_index": c.get("camera_index"),
+                    "image_filename": os.path.basename(c["image_path"]) if c.get("image_path") else None,
+                    "analysis": c.get("analysis") or {},
+                    "alert_sent": bool(c.get("alert_sent")),
+                    "error": c.get("error"),
+                }
+                for c in cameras
+            ],
+        }
+        with _history_lock:
+            _history.insert(0, entry)
+            del _history[HISTORY_LIMIT:]
+            snapshot = list(_history)
+        if os.path.isdir(Config.HOST_IMAGE_DIR):
+            tmp = _history_path() + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(snapshot, f)
+            os.replace(tmp, _history_path())
+    except Exception as e:
+        logger.warning(f"Could not record scan for the dashboard: {e}")
+
+def camera_health(history: list) -> Dict[str, Dict[str, bool]]:
+    """Per-camera flags from the last three scans: repeated failures, sustained inactivity."""
+    health: Dict[str, Dict[str, bool]] = {}
+    if not history:
+        return health
+    for cam in history[0].get("cameras", []):
+        idx = cam.get("camera_index")
+        recent = [
+            c for scan in history for c in scan.get("cameras", [])
+            if c.get("camera_index") == idx
+        ][:3]
+        health[str(idx)] = {
+            "failedRecently": len(recent) >= 3 and all(c.get("error") for c in recent),
+            "sustainedInactivity": len(recent) >= 3 and all(
+                (c.get("analysis") or {}).get("unusual_inactivity") is True for c in recent
+            ),
+        }
+    return health
 
 def cleanup_old_images() -> None:
     """
@@ -470,8 +542,9 @@ def schedule_loop():
                         "error": "Capture failed",
                     })
 
-            # 5. Push all results to TurtleVision
+            # 5. Remember the scan for the local dashboard, then push to TurtleVision (if enabled)
             if camera_results:
+                record_scan(camera_results)
                 push_to_turtlevision(camera_results)
 
             # 6. Clean up old images
@@ -571,7 +644,8 @@ def api_scan():
 
         results.append(entry)
 
-    # Push results to TurtleVision (non-blocking)
+    record_scan(results)
+    # Push results to TurtleVision (non-blocking; skipped unless enabled)
     push_to_turtlevision(results)
 
     return jsonify({"cameras": results})
@@ -612,13 +686,30 @@ def api_start_scheduler():
 def serve_image(filename: str):
     """
     Serve a captured image by filename from HOST_IMAGE_DIR.
-    Used by TurtleVision to display thumbnails alongside scan results.
+    Used by the local dashboard to display thumbnails alongside scan results.
     Example: GET /images/snapshot_cam1_20260504_120000.jpg
     """
     image_dir = Config.HOST_IMAGE_DIR
     if not image_dir or not os.path.isdir(image_dir):
         abort(404)
     return send_from_directory(image_dir, filename)
+
+@app.route('/dashboard', methods=["GET"])
+def dashboard_page():
+    """Local staff dashboard. The page itself is static; its data comes from /api/dashboard."""
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "dashboard.html")
+
+@app.route('/api/dashboard', methods=["GET"])
+@require_api_key
+def api_dashboard():
+    with _history_lock:
+        history = list(_history)
+    return jsonify({
+        "latest": history[0] if history else None,
+        "history": history[:10],
+        "cameraHealth": camera_health(history),
+        "intervalMinutes": Config.INTERVAL,
+    })
 
 @app.route('/health', methods=["GET"])
 def health_check():
@@ -630,6 +721,7 @@ def index():
 
 if __name__ == "__main__":
     logger.info("Starting scheduler service...")
+    _load_history()
     
     # Auto-start scheduler on launch
     scheduler_thread = threading.Thread(target=schedule_loop, name="SchedulerThread", daemon=True)

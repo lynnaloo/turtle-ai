@@ -36,9 +36,9 @@ and none of them should ever be flagged as distressed:
   the flat rock or wood basking slab. The plant anchors are round, dark and roughly carapace-sized
   from above — they sit at the base of a green plastic plant, which is the giveaway.
 
-TOP PRIORITY: carapace-up positioning.
+TOP PRIORITY: flipped turtles.
 A turtle flipped onto its back with the plastron (belly) exposed can be fatal. Check every turtle visible, including small ones and turtles partially hidden behind hides or at bin edges.
-If any turtle is carapace-up with its plastron visible, set "carapace_up" and "plastron_visible" to true and set "turtle_well_being" to "distressed".
+If any turtle is flipped on its back with its plastron visible, set "flipped" and "plastron_visible" to true and set "turtle_well_being" to "distressed".
 
 Other indicators:
 - entrapment: physically stuck in or under a man-made object (netting, filter, decoration, tank divider, hide) and unable to free itself. Burrowing or digging into substrate is normal behavior and must never be flagged as entrapment.
@@ -55,7 +55,7 @@ Habitat checks (these produce warnings only, never "distressed"):
 - Main area: if the water level in any aquatic tank or water dish looks low, add a warning.
 
 Well-being decision:
-- "distressed" ONLY if: a turtle is carapace-up with its plastron visible, a turtle is entrapped, a turtle appears dead or unresponsive, or active aggression is occurring.
+- "distressed" ONLY if: a turtle is flipped on its back with its plastron visible, a turtle is entrapped, a turtle appears dead or unresponsive, or active aggression is occurring.
 - Otherwise "good". Habitat issues (low water, dry substrate, etc.) go in "warnings" and keep the status "good".
 - If you cannot clearly see any turtle, set all flags false and list any habitat warnings. Say the
   view is inconclusive — do not report the bin as empty, and do not report the turtles as fine.
@@ -67,7 +67,7 @@ Response Format: JSON
 Fill out the following JSON structure with your analysis:
 {
     "turtle_well_being": "good" | "distressed",
-    "carapace_up": true | false,
+    "flipped": true | false,
     "plastron_visible": true | false,
     "entrapment": true | false,
     "unusual_inactivity": true | false,

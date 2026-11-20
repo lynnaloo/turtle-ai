@@ -5,6 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY scheduler.py prompts.py ./
+COPY scheduler.py prompts.py dashboard.html ./
 
 CMD ["python", "scheduler.py"]

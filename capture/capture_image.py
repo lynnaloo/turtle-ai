@@ -38,6 +38,10 @@ def image_capture(output_dir='/images', camera_url=None):
     app.logger.debug(f'Saving to: {output_path}')
 
     try:
+        # Take the first *keyframe*, not the first decoded frame. A one-shot RTSP grab
+        # joins the stream mid-GOP, and the frames before the first keyframe decode as
+        # flat grey (HEVC/H.264 references are missing). Cameras that happen to join near
+        # a keyframe look fine, which makes this intermittent and per-camera.
         (
             ffmpeg
             .input(
@@ -47,9 +51,11 @@ def image_capture(output_dir='/images', camera_url=None):
             )
             .output(
                 output_path, 
-                vframes=1, 
-                format='image2', 
+                vframes=1,
+                format='image2',
                 update=1,
+                vf='select=eq(pict_type\\,I)',
+                fps_mode='vfr',
                 **{'q:v': 2}
             )
             .run(capture_stdout=True, capture_stderr=True)

@@ -76,6 +76,14 @@ layer gives up before the inner one can report a useful failure:
 ffmpeg 5.0 — most RTSP examples online still show the old name, which errors out with
 `Unrecognized option 'stimeout'` on modern builds.
 
+## Capture: keyframes only
+
+`capture/capture_image.py` grabs the first *keyframe* (`select=eq(pict_type,I)`), not the first decoded
+frame. A one-shot RTSP grab joins the stream mid-GOP, and frames before the first keyframe decode as flat
+grey (the logs show `Could not find ref with POC ...`). Without the filter, some cameras returned 25-100 KB
+grey images while others looked fine, which looked like a lighting or camera problem but was not. Keep the
+filter; a real frame is hundreds of KB to a few MB.
+
 ## Key Files
 
 - `scheduler/prompts.py` — LLM prompt describing the environment under observation. This is the operator's primary customization point: species present, enclosure types, what objects the model should and shouldn't flag. The SERC prompt describes Eastern Box Turtles and Diamondback Terrapins with room-overview and bin cameras; a zoo operator would write a completely different prompt for their setup. The code never reads or validates prompt content — keep it general.
@@ -102,6 +110,8 @@ Habitat problems (low water, dry substrate, etc.) are deliberately *not* distres
 - `POST /scan` — on-demand capture + analysis across all cameras; returns per-camera JSON results; fires Twilio alerts if distress detected. Requires `X-API-Key` header when `API_KEY` env var is set.
 - `GET /images/<filename>` — serve a captured image by filename from `HOST_IMAGE_DIR`, for local use by the operator. Requires `X-API-Key` header when `API_KEY` env var is set.
 - `GET /image-analysis?image_path=...` — analyze a specific image file. Requires `X-API-Key` header when `API_KEY` env var is set.
+- `GET /dashboard` — local staff dashboard page (`scheduler/dashboard.html`); static, no external requests
+- `GET /api/dashboard` — latest scan, recent history, and per-camera health for the dashboard. Requires `X-API-Key` header when `API_KEY` env var is set.
 - `GET /start-scheduler` — manually start the background scheduler loop (normally auto-starts on launch)
 - `GET /health` — health check
 

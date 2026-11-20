@@ -19,7 +19,7 @@ A local endpoint so the operator (or a script on the same network) can trigger a
       "image_path": "/images/...",
       "analysis": {
         "turtle_well_being": "good" | "distressed",
-        "carapace_up": true | false,
+        "flipped": true | false,
         "plastron_visible": true | false,
         "entrapment": true | false,
         "unusual_inactivity": true | false,

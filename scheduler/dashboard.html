@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enclosure Monitor</title>
+<!-- Local-only dashboard: no external fonts, scripts or requests. -->
+<style>
+  :root {
+    --background: #f7f3ee;
+    --surface: #ede6db;
+    --surface-raised: #e4dace;
+    --border: #d0c4b0;
+    --accent: #8b6914;
+    --distress: #a83228;
+    --good: #3a7a4a;
+    --foreground: #1e1a14;
+    --muted: #6b6256;
+    --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  h1, h2 { font-family: var(--serif); margin: 0; }
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 2.5rem; }
+  .header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+  .eyebrow { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .2em; color: var(--accent); margin: 0 0 .25rem; }
+  h1 { font-size: 1.875rem; font-weight: 600; }
+  .sub { font-size: .875rem; color: var(--muted); margin: .25rem 0 0; }
+  h2 { font-family: var(--sans); font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .75rem; }
+  .pills { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .pill { font-size: .75rem; font-weight: 600; padding: .25rem .75rem; border-radius: 999px; color: #fff; }
+  .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
+  .card { border: 1px solid var(--border); border-radius: .25rem; overflow: hidden; display: flex; flex-direction: column; }
+  .card.distress { border-color: var(--distress); }
+  .card.unhealthy { border-color: var(--accent); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; padding: .75rem 1rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .card.distress .card-head { background: var(--distress); color: #fff; }
+  .card.unhealthy .card-head { background: var(--accent); color: #fff; }
+  .card-title { font-family: var(--serif); font-weight: 600; font-size: .95rem; }
+  .status { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .125rem .5rem; border-radius: 999px; background: var(--good); color: #fff; }
+  .card.distress .status { background: rgba(0,0,0,.25); }
+  .card.unhealthy .status { background: none; padding: 0; }
+  .img { background: #1a1714; }
+  .img img { display: block; width: 100%; max-height: 220px; object-fit: cover; }
+  .noimg { display: flex; align-items: center; justify-content: center; font-size: .75rem; padding: 2rem 0; background: var(--surface-raised); color: var(--border); }
+  .body { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; background: var(--surface); }
+  .badge { display: inline-block; font-size: .75rem; font-weight: 500; padding: .125rem .5rem; border-radius: 999px; margin: 0 .25rem .25rem 0; background: var(--distress); color: #fff; }
+  .warn { font-size: .75rem; font-weight: 500; padding: .5rem .75rem; border-radius: .25rem; margin-bottom: .5rem; line-height: 1.35; background: var(--accent); color: #fff; }
+  .note { font-size: .75rem; line-height: 1.6; font-style: italic; color: var(--muted); margin: 0; }
+  .err { font-size: .75rem; color: var(--distress); margin: 0; }
+  .alert { font-size: .75rem; font-weight: 600; color: var(--distress); margin: 0; }
+  .mono { font-size: .75rem; font-family: ui-monospace, Menlo, monospace; color: var(--border); margin: 0; word-break: break-all; }
+  .history { display: flex; flex-direction: column; gap: .5rem; }
+  details { border: 1px solid var(--border); border-radius: .25rem; overflow: hidden; }
+  summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .75rem 1rem; background: var(--surface); }
+  summary::-webkit-details-marker { display: none; }
+  summary .when { font-family: var(--serif); font-size: .9rem; }
+  summary .idx { font-size: .75rem; color: var(--muted); }
+  .tag { font-size: .75rem; padding: .125rem .5rem; border-radius: 999px; }
+  .tag.d { background: var(--distress); color: #fff; font-weight: 600; }
+  .tag.e { background: var(--border); color: var(--muted); }
+  details .inner { padding: 1rem; background: var(--background); }
+  .empty { text-align: center; padding: 3rem 0; }
+  .empty .big { font-size: 2.5rem; margin: 0 0 1rem; }
+  .empty .t { font-weight: 600; margin: 0; }
+  .login { max-width: 22rem; margin: 4rem auto; padding: 0 1.5rem; }
+  .login input { width: 100%; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: .25rem; background: #fff; font: inherit; margin: .75rem 0; }
+  .login button { padding: .5rem 1rem; border: 0; border-radius: .25rem; background: #2e2a22; color: #fff; font: inherit; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app"><div class="wrap"><p class="sub">Loading…</p></div></div>
+
+<script>
+(function () {
+  var app = document.getElementById("app");
+  var KEY_STORE = "turtle-ai-api-key";
+  var apiKey = "";
+  try { apiKey = sessionStorage.getItem(KEY_STORE) || ""; } catch (e) {}
+  var blobUrls = [];
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+
+  function headers() { return apiKey ? { "X-API-Key": apiKey } : {}; }
+
+  // Images may sit behind the API key, so fetch them with the header and show a blob.
+  function loadImage(filename, holder, fallbackText) {
+    fetch("images/" + encodeURIComponent(filename), { headers: headers() })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      .then(function (b) {
+        var url = URL.createObjectURL(b);
+        blobUrls.push(url);
+        var img = document.createElement("img");
+        img.alt = "";
+        img.src = url;
+        holder.className = "img";
+        holder.textContent = "";
+        holder.appendChild(img);
+      })
+      .catch(function () { holder.textContent = fallbackText; });
+  }
+
+  function distressBadge(label) { return el("span", "badge", "🚨 " + label); }
+  function warnBadge(label) { return el("div", "warn", "⚠ " + label); }
+
+  function card(cam, health) {
+    var a = cam.analysis || {};
+    var wellBeing = a.turtle_well_being || "unknown";
+    var distressed = wellBeing === "distressed";
+    var hasError = !!cam.error;
+    var unhealthy = !!(health && health.failedRecently);
+
+    var c = el("div", "card" + (distressed ? " distress" : unhealthy ? " unhealthy" : ""));
+
+    var head = el("div", "card-head");
+    head.appendChild(el("span", "card-title", "Camera " + cam.camera_index));
+    head.appendChild(el("span", "status", unhealthy ? "Offline" : wellBeing));
+    c.appendChild(head);
+
+    var holder = el("div", "noimg", hasError ? "Capture failed" : "No image");
+    c.appendChild(holder);
+    if (cam.image_filename && !hasError) loadImage(cam.image_filename, holder, "Image no longer on disk");
+
+    var body = el("div", "body");
+    if (!hasError) {
+      var badges = el("div");
+      if (a.flipped) badges.appendChild(distressBadge("Flipped"));
+      if (a.plastron_visible) badges.appendChild(distressBadge("Plastron Visible"));
+      if (a.entrapment) badges.appendChild(distressBadge("Entrapment"));
+      if (a.unusual_inactivity) badges.appendChild(distressBadge("Unusual Inactivity"));
+      if (a.aggressive_interactions) badges.appendChild(distressBadge("Aggressive Interactions"));
+      if (a.eggs_present) badges.appendChild(distressBadge("Eggs Present"));
+      if (health && health.sustainedInactivity) badges.appendChild(warnBadge("Inactivity across 3+ scans"));
+      (Array.isArray(a.warnings) ? a.warnings : []).forEach(function (w) { badges.appendChild(warnBadge(String(w))); });
+      body.appendChild(badges);
+    } else {
+      body.appendChild(el("p", "err", cam.error));
+    }
+    if (a.additional_notes) body.appendChild(el("p", "note", a.additional_notes));
+    if (cam.image_filename) body.appendChild(el("p", "mono", cam.image_filename));
+    if (cam.alert_sent) body.appendChild(el("p", "alert", "📱 Twilio alert sent"));
+    c.appendChild(body);
+    return c;
+  }
+
+  function status(cam, health) {
+    if (cam.error) return "failed";
+    if (health && health.failedRecently) return "offline";
+    if (health && health.sustainedInactivity) return "inactivity";
+    if ((cam.analysis || {}).turtle_well_being === "distressed") return "distressed";
+    return "ok";
+  }
+  var pillColors = {
+    ok: ["var(--good)", "#fff"], distressed: ["var(--distress)", "#fff"],
+    inactivity: ["var(--accent)", "#fff"], offline: ["var(--accent)", "#fff"],
+    failed: ["var(--border)", "var(--muted)"]
+  };
+
+  function section(title) {
+    var s = el("div");
+    s.appendChild(el("h2", null, title));
+    return s;
+  }
+
+  function historyRow(scan, i) {
+    var d = el("details");
+    var sum = el("summary");
+    sum.appendChild(el("span", "idx", "#" + (i + 1)));
+    sum.appendChild(el("span", "when", new Date(scan.scannedAt).toLocaleString()));
+    var cams = scan.cameras || [];
+    if (cams.some(function (c) { return (c.analysis || {}).turtle_well_being === "distressed"; })) sum.appendChild(el("span", "tag d", "Distress"));
+    if (cams.some(function (c) { return c.error; })) sum.appendChild(el("span", "tag e", "Capture errors"));
+    d.appendChild(sum);
+    var inner = el("div", "inner");
+    var g = el("div", "grid");
+    var rendered = false;
+    d.addEventListener("toggle", function () {
+      if (d.open && !rendered) {
+        rendered = true;
+        cams.forEach(function (c) { g.appendChild(card(c)); });
+      }
+    });
+    inner.appendChild(g);
+    d.appendChild(inner);
+    return d;
+  }
+
+  function render(data) {
+    blobUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+    blobUrls = [];
+    var openIds = [];
+    var wrap = el("div", "wrap");
+
+    if (!data.latest) {
+      var empty = el("div", "empty");
+      empty.appendChild(el("p", "big", "🐢"));
+      empty.appendChild(el("p", "t", "No scan data yet"));
+      empty.appendChild(el("p", "sub", "The first scheduled scan will appear here."));
+      wrap.appendChild(empty);
+      app.replaceChildren(wrap);
+      return;
+    }
+
+    var latest = data.latest, health = data.cameraHealth || {};
+
+    var header = el("div", "header");
+    header.appendChild(el("p", "eyebrow", "Staff Dashboard"));
+    header.appendChild(el("h1", null, "Enclosure Monitor"));
+    header.appendChild(el("p", "sub", "Last scan: " + new Date(latest.scannedAt).toLocaleString() + " · refreshes automatically"));
+    wrap.appendChild(header);
+
+    var st = section("Camera Status");
+    var pills = el("div", "pills");
+    latest.cameras.forEach(function (cam) {
+      var s = status(cam, health[cam.camera_index]);
+      var p = el("span", "pill", "Cam " + cam.camera_index + " · " + s);
+      p.style.background = pillColors[s][0];
+      p.style.color = pillColors[s][1];
+      pills.appendChild(p);
+    });
+    st.appendChild(pills);
+    wrap.appendChild(st);
+
+    var ls = section("Latest Scan");
+    var grid = el("div", "grid");
+    latest.cameras.forEach(function (cam) { grid.appendChild(card(cam, health[cam.camera_index])); });
+    ls.appendChild(grid);
+    wrap.appendChild(ls);
+
+    var past = (data.history || []).slice(1);
+    if (past.length) {
+      var hs = section("Scan History");
+      var list = el("div", "history");
+      past.forEach(function (scan, i) { list.appendChild(historyRow(scan, i)); });
+      hs.appendChild(list);
+      wrap.appendChild(hs);
+    }
+    app.replaceChildren(wrap);
+  }
+
+  function askForKey(message) {
+    var box = el("div", "login");
+    box.appendChild(el("h1", null, "Enclosure Monitor"));
+    box.appendChild(el("p", "sub", message));
+    var input = el("input");
+    input.type = "password";
+    input.placeholder = "API key";
+    var btn = el("button", null, "Open dashboard");
+    function submit() {
+      apiKey = input.value.trim();
+      try { sessionStorage.setItem(KEY_STORE, apiKey); } catch (e) {}
+      load();
+    }
+    btn.addEventListener("click", submit);
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
+    box.appendChild(input);
+    box.appendChild(btn);
+    app.replaceChildren(box);
+  }
+
+  var timer = null;
+  var firstLoad = true;
+  function load() {
+    clearTimeout(timer);
+    fetch("api/dashboard", { headers: headers() })
+      .then(function (r) {
+        if (r.status === 401) { askForKey(apiKey ? "That key didn't work." : "This dashboard needs the API key set in docker-compose."); return null; }
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        // Don't wipe a history row the user has open: skip re-render while one is expanded.
+        if (firstLoad || !document.querySelector("details[open]")) render(data);
+        firstLoad = false;
+        timer = setTimeout(load, 30000);
+      })
+      .catch(function () {
+        if (firstLoad) { var w = el("div", "wrap"); w.appendChild(el("p", "sub", "Could not reach the scheduler.")); app.replaceChildren(w); }
+        timer = setTimeout(load, 30000);
+      });
+  }
+  load();
+})();
+</script>
+</body>
+</html>
